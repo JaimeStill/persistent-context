@@ -1,17 +1,20 @@
 # Session 2 Execution Plan: Memory Pipeline Implementation
 
 ## Overview
+
 Session 2 focuses on implementing the core memory capture and storage pipeline. Building on the infrastructure from Session 1, we'll integrate Qdrant for vector storage, Ollama for embeddings, and create a functional memory ingestion system.
 
 ## Session Progress
 
 ### 0. Documentation Setup (5 minutes) - COMPLETED
+
 - [x] Create `_context/sessions/` directory
 - [x] Archive current execution-plan.md to `_context/sessions/session-001.md`
 - [x] Create new execution-plan.md for Session 2
 - [x] Update CLAUDE.md with session handoff and configuration directives
 
 ### 1. Configuration Architecture Refactor (20 minutes) - COMPLETED
+
 - [x] Add Qdrant Go client dependency to go.mod
 - [x] Implement distributed configuration architecture with package-specific configs in config package
 - [x] Create `internal/config/vectordb.go` with VectorDB configuration
@@ -23,6 +26,7 @@ Session 2 focuses on implementing the core memory capture and storage pipeline. 
 - [x] Update central config loader to coordinate all package configurations
 
 ### 2. Qdrant Integration (15 minutes) - COMPLETED
+
 - [x] Create `internal/vectordb/qdrant_client.go` with connection management
 - [x] Initialize collections for different memory types with configurable names
 - [x] Implement store/retrieve/query operations with proper error handling
@@ -30,6 +34,7 @@ Session 2 focuses on implementing the core memory capture and storage pipeline. 
 - [x] Support for memory metadata and vector embeddings
 
 ### 3. Ollama Integration (15 minutes) - COMPLETED
+
 - [x] Create `internal/llm/ollama_client.go` for LLM operations
 - [x] Implement embedding generation with configurable model
 - [x] Add embedding caching with configurable TTL
@@ -38,6 +43,7 @@ Session 2 focuses on implementing the core memory capture and storage pipeline. 
 - [x] Create health check functionality
 
 ### 4. Memory Storage Implementation (15 minutes) - COMPLETED
+
 - [x] Update `storage/memory_store.go` to use Qdrant backend
 - [x] Implement vector embedding pipeline integration
 - [x] Add memory serialization/deserialization via Qdrant
@@ -47,6 +53,7 @@ Session 2 focuses on implementing the core memory capture and storage pipeline. 
 - [x] Integrate proper error handling and logging
 
 ### 4. MCP Hook Implementation (10 minutes) - PENDING
+
 - [ ] Update config/config.go with MCP settings (buffer sizes, worker counts)
 - [ ] Update MCP server to capture actual context
 - [ ] Create memory ingestion worker with configurable buffer
@@ -55,6 +62,7 @@ Session 2 focuses on implementing the core memory capture and storage pipeline. 
 - [ ] Test with sample captures
 
 ### 5. Integration Testing (10 minutes) - PENDING
+
 - [ ] Create integration tests for memory pipeline
 - [ ] Test end-to-end capture and storage flow
 - [ ] Verify vector search functionality
@@ -62,6 +70,7 @@ Session 2 focuses on implementing the core memory capture and storage pipeline. 
 - [ ] Document test results
 
 ### 6. Final Documentation (5 minutes) - PENDING
+
 - [ ] Update execution-plan.md with all results
 - [ ] Document any issues or blockers
 - [ ] Note improvements for next session
@@ -70,6 +79,7 @@ Session 2 focuses on implementing the core memory capture and storage pipeline. 
 ## Configuration Strategy
 
 ### New Config Sections to Add
+
 ```go
 type Config struct {
     // Existing sections...
@@ -111,6 +121,7 @@ type MCPConfig struct {
 ## Implementation Details
 
 ### Qdrant Client Structure
+
 ```go
 type QdrantClient struct {
     client      *qdrant.Client
@@ -120,6 +131,7 @@ type QdrantClient struct {
 ```
 
 ### Ollama Embedding Pipeline
+
 ```go
 type EmbeddingPipeline struct {
     ollama *OllamaClient
@@ -129,6 +141,7 @@ type EmbeddingPipeline struct {
 ```
 
 ### Memory Ingestion Worker
+
 ```go
 type IngestionWorker struct {
     queue    chan *CaptureRequest
@@ -139,6 +152,7 @@ type IngestionWorker struct {
 ```
 
 ## Success Criteria
+
 - All new components use configuration from config package
 - MCP server successfully captures context from hooks
 - Memories are embedded and stored in Qdrant
@@ -147,6 +161,7 @@ type IngestionWorker struct {
 - Documentation provides clear handoff for Session 3
 
 ## Notes
+
 - Focusing on learning fundamentals by implementing components from scratch
 - Configuration-driven design allows for flexibility without code changes
 - Priority is understanding how these systems work at a low level
@@ -185,7 +200,7 @@ type IngestionWorker struct {
 ### Remaining Tasks for Session 3
 
 1. **MCP Server Updates**: Update MCP server to use new memory storage system
-2. **Integration Testing**: Test end-to-end memory pipeline 
+2. **Integration Testing**: Test end-to-end memory pipeline
 3. **Main Application Integration**: Update main.go to wire up all components
 4. **API Fixes**: Some Qdrant API methods need correction (Search vs Query methods)
 
@@ -196,6 +211,7 @@ type IngestionWorker struct {
 3. **Testing**: No integration tests created yet
 
 ## Next Steps (Session 3)
+
 - Implement sleep-like consolidation cycles
 - Create episodic→semantic transformation logic
 - Add forgetting curve algorithm
