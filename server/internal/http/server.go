@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/JaimeStill/persistent-context/internal/config"
+	"github.com/gin-gonic/gin"
 )
 
 // Server represents the HTTP server
@@ -35,29 +35,29 @@ func NewServer(cfg *config.Config, deps *Dependencies) *Server {
 	} else {
 		gin.SetMode(gin.ReleaseMode)
 	}
-	
+
 	engine := gin.New()
-	
+
 	// Add middleware
 	engine.Use(gin.Recovery())
 	if cfg.Logging.Level == "debug" {
 		engine.Use(gin.Logger())
 	}
-	
+
 	s := &Server{
 		config: cfg,
 		engine: engine,
 		server: &http.Server{
-			Addr:         ":" + cfg.Server.Port,
+			Addr:         ":" + cfg.HTTP.Port,
 			Handler:      engine,
-			ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
-			WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
+			ReadTimeout:  time.Duration(cfg.HTTP.ReadTimeout) * time.Second,
+			WriteTimeout: time.Duration(cfg.HTTP.WriteTimeout) * time.Second,
 		},
 	}
-	
+
 	// Register routes
 	s.registerRoutes(deps)
-	
+
 	return s
 }
 
@@ -67,14 +67,14 @@ func (s *Server) registerRoutes(deps *Dependencies) {
 	s.engine.GET("/health", s.handleHealth)
 	s.engine.GET("/ready", s.handleReady(deps))
 	s.engine.GET("/metrics", s.handleMetrics)
-	
+
 	// API routes group (for future expansion)
 	api := s.engine.Group("/api/v1")
 	{
 		// Memory endpoints (placeholders for Session 2)
 		api.GET("/memories", s.handleGetMemories)
 		api.POST("/memories", s.handleCreateMemory)
-		
+
 		// Persona endpoints (placeholders for Session 3)
 		api.GET("/personas", s.handleGetPersonas)
 		api.POST("/personas/export", s.handleExportPersona)
@@ -95,11 +95,11 @@ func (s *Server) handleReady(deps *Dependencies) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 		defer cancel()
-		
+
 		// Check dependencies
 		qdrantStatus := "healthy"
 		ollamaStatus := "healthy"
-		
+
 		if deps.QdrantHealth != nil {
 			if err := deps.QdrantHealth.HealthCheck(ctx); err != nil {
 				qdrantStatus = "unhealthy"
@@ -107,7 +107,7 @@ func (s *Server) handleReady(deps *Dependencies) gin.HandlerFunc {
 		} else {
 			qdrantStatus = "unknown"
 		}
-		
+
 		if deps.OllamaHealth != nil {
 			if err := deps.OllamaHealth.HealthCheck(ctx); err != nil {
 				ollamaStatus = "unhealthy"
@@ -115,14 +115,14 @@ func (s *Server) handleReady(deps *Dependencies) gin.HandlerFunc {
 		} else {
 			ollamaStatus = "unknown"
 		}
-		
+
 		// Determine overall readiness
 		ready := qdrantStatus == "healthy" && ollamaStatus == "healthy"
 		status := http.StatusOK
 		if !ready {
 			status = http.StatusServiceUnavailable
 		}
-		
+
 		c.JSON(status, gin.H{
 			"status": map[bool]string{true: "ready", false: "not_ready"}[ready],
 			"ready":  ready,
@@ -139,8 +139,8 @@ func (s *Server) handleReady(deps *Dependencies) gin.HandlerFunc {
 func (s *Server) handleMetrics(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"metrics": gin.H{
-			"uptime":              time.Since(time.Now()).String(), // Placeholder
-			"memory_entries":      0,
+			"uptime":               time.Since(time.Now()).String(), // Placeholder
+			"memory_entries":       0,
 			"consolidation_cycles": 0,
 		},
 		"timestamp": time.Now().UTC().Format(time.RFC3339),

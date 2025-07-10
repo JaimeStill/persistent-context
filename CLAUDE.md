@@ -35,6 +35,21 @@ The only restriction within this repository is that any folder prefixed with a `
 - Maintain clear documentation of progress and decisions
 - Update this file with new directives as they are established
 
+### Session Management and Handoff Process
+
+- **Documentation First**: At the start of each session, archive the previous execution plan to `_context/sessions/session-XXX.md` and create a new execution plan for the current session
+- **Continuous Updates**: Update execution-plan.md continuously during development, marking tasks as completed with relevant implementation details
+- **Living Document**: The execution plan serves as both a progress tracker and a comprehensive handoff document for the next session
+- **Clear Handoff**: Each session should end with a complete execution plan showing what was accomplished, any blockers, and next steps
+
+### Configuration Management
+
+- **Configuration First**: All new components must expose their settings through the config package using Viper's mapstructure tags
+- **Sensible Defaults**: Provide reasonable default values for all configuration options
+- **Documentation**: Document all configuration options in code comments and execution plans
+- **Flexibility**: Design components to be runtime-configurable rather than compile-time where possible
+- **Nested Structure**: Use nested configuration structures to organize related settings logically
+
 ## Projected Repository Structure
 
 As the project scales, the repository structure should evolve to:
