@@ -7,13 +7,11 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/JaimeStill/persistent-context/internal/config"
 )
 
-// OllamaClient implements LLM operations using Ollama
-type OllamaClient struct {
-	config *config.LLMConfig
+// OllamaLLM implements LLM operations using Ollama
+type OllamaLLM struct {
+	config *Config
 	client *http.Client
 	cache  map[string][]float32
 }
@@ -44,19 +42,19 @@ type GenerateResponse struct {
 	CreatedAt string `json:"created_at"`
 }
 
-// NewOllamaClient creates a new Ollama client
-func NewOllamaClient(config *config.LLMConfig) *OllamaClient {
-	return &OllamaClient{
+// NewOllamaLLM creates a new Ollama LLM implementation
+func NewOllamaLLM(config *Config) (*OllamaLLM, error) {
+	return &OllamaLLM{
 		config: config,
 		client: &http.Client{
 			Timeout: config.Timeout,
 		},
 		cache: make(map[string][]float32),
-	}
+	}, nil
 }
 
 // GenerateEmbedding generates embeddings for the given text
-func (c *OllamaClient) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
+func (c *OllamaLLM) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
 	// Check cache first if enabled
 	if c.config.CacheEnabled {
 		if embedding, exists := c.cache[text]; exists {
@@ -108,7 +106,7 @@ func (c *OllamaClient) GenerateEmbedding(ctx context.Context, text string) ([]fl
 }
 
 // makeEmbeddingRequest makes a single embedding request
-func (c *OllamaClient) makeEmbeddingRequest(ctx context.Context, jsonData []byte) ([]float32, error) {
+func (c *OllamaLLM) makeEmbeddingRequest(ctx context.Context, jsonData []byte) ([]float32, error) {
 	url := c.config.URL + "/api/embeddings"
 	
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
@@ -137,7 +135,7 @@ func (c *OllamaClient) makeEmbeddingRequest(ctx context.Context, jsonData []byte
 }
 
 // ConsolidateMemories uses the LLM to consolidate multiple memories into semantic knowledge
-func (c *OllamaClient) ConsolidateMemories(ctx context.Context, memories []string) (string, error) {
+func (c *OllamaLLM) ConsolidateMemories(ctx context.Context, memories []string) (string, error) {
 	prompt := c.buildConsolidationPrompt(memories)
 
 	reqBody := GenerateRequest{
@@ -179,7 +177,7 @@ func (c *OllamaClient) ConsolidateMemories(ctx context.Context, memories []strin
 }
 
 // makeGenerateRequest makes a single generation request
-func (c *OllamaClient) makeGenerateRequest(ctx context.Context, jsonData []byte) (string, error) {
+func (c *OllamaLLM) makeGenerateRequest(ctx context.Context, jsonData []byte) (string, error) {
 	url := c.config.URL + "/api/generate"
 	
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
@@ -208,7 +206,7 @@ func (c *OllamaClient) makeGenerateRequest(ctx context.Context, jsonData []byte)
 }
 
 // buildConsolidationPrompt creates a prompt for memory consolidation
-func (c *OllamaClient) buildConsolidationPrompt(memories []string) string {
+func (c *OllamaLLM) buildConsolidationPrompt(memories []string) string {
 	prompt := "You are a memory consolidation system. Analyze the following episodic memories and extract the key semantic knowledge, patterns, and insights. "
 	prompt += "Consolidate them into concise, meaningful knowledge that can be stored as semantic memory.\n\n"
 	prompt += "Episodic memories to analyze:\n"
@@ -223,7 +221,7 @@ func (c *OllamaClient) buildConsolidationPrompt(memories []string) string {
 }
 
 // HealthCheck checks if Ollama is accessible
-func (c *OllamaClient) HealthCheck(ctx context.Context) error {
+func (c *OllamaLLM) HealthCheck(ctx context.Context) error {
 	url := c.config.URL + "/api/tags"
 	
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -245,7 +243,7 @@ func (c *OllamaClient) HealthCheck(ctx context.Context) error {
 }
 
 // ClearCache clears the embedding cache
-func (c *OllamaClient) ClearCache() {
+func (c *OllamaLLM) ClearCache() {
 	if c.config.CacheEnabled {
 		c.cache = make(map[string][]float32)
 	}

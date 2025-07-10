@@ -1,4 +1,4 @@
-package storage
+package memory
 
 import (
 	"context"
@@ -8,22 +8,21 @@ import (
 
 	"github.com/JaimeStill/persistent-context/internal/config"
 	"github.com/JaimeStill/persistent-context/internal/llm"
-	"github.com/JaimeStill/persistent-context/internal/memory"
 	"github.com/JaimeStill/persistent-context/internal/vectordb"
 )
 
-// MemoryStore implements memory storage using Qdrant and Ollama
+// MemoryStore implements memory storage using vectordb and llm interfaces
 type MemoryStore struct {
-	vectorDB *vectordb.QdrantClient
-	llmClient *llm.OllamaClient
-	config   *config.MemoryConfig
-	counter  int64
+	vectorDB  vectordb.VectorDB
+	llmClient llm.LLM
+	config    *config.MemoryConfig
+	counter   int64
 }
 
 // Dependencies holds the dependencies for memory store
 type Dependencies struct {
-	VectorDB  *vectordb.QdrantClient
-	LLMClient *llm.OllamaClient
+	VectorDB  vectordb.VectorDB
+	LLMClient llm.LLM
 	Config    *config.MemoryConfig
 }
 
@@ -49,9 +48,9 @@ func (ms *MemoryStore) CaptureContext(ctx context.Context, source string, conten
 	}
 
 	// Create memory entry
-	entry := &memory.MemoryEntry{
+	entry := &MemoryEntry{
 		ID:         fmt.Sprintf("mem_%d_%d", time.Now().Unix(), ms.counter),
-		Type:       memory.TypeEpisodic,
+		Type:       TypeEpisodic,
 		Content:    content,
 		Embedding:  embedding,
 		Metadata:   metadata,
@@ -83,15 +82,15 @@ func (ms *MemoryStore) CaptureContext(ctx context.Context, source string, conten
 }
 
 // GetMemories retrieves recent memories from episodic storage
-func (ms *MemoryStore) GetMemories(ctx context.Context, limit int) ([]*memory.MemoryEntry, error) {
-	if limit <= 0 {
+func (ms *MemoryStore) GetMemories(ctx context.Context, limit uint64) ([]*MemoryEntry, error) {
+	if limit == 0 {
 		limit = ms.config.BatchSize
 	}
 
 	// Create a dummy vector for recent memories query (we'll improve this in Session 3)
 	dummyVector := make([]float32, 1536) // Standard embedding dimension
 	
-	memories, err := ms.vectorDB.Query(ctx, memory.TypeEpisodic, dummyVector, limit)
+	memories, err := ms.vectorDB.Query(ctx, TypeEpisodic, dummyVector, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query memories: %w", err)
 	}
@@ -100,8 +99,8 @@ func (ms *MemoryStore) GetMemories(ctx context.Context, limit int) ([]*memory.Me
 }
 
 // GetMemoryByID retrieves a specific memory by ID
-func (ms *MemoryStore) GetMemoryByID(ctx context.Context, id string) (*memory.MemoryEntry, error) {
-	entry, err := ms.vectorDB.Retrieve(ctx, memory.TypeEpisodic, id)
+func (ms *MemoryStore) GetMemoryByID(ctx context.Context, id string) (*MemoryEntry, error) {
+	entry, err := ms.vectorDB.Retrieve(ctx, TypeEpisodic, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve memory %s: %w", id, err)
 	}
@@ -113,14 +112,14 @@ func (ms *MemoryStore) GetMemoryByID(ctx context.Context, id string) (*memory.Me
 }
 
 // QuerySimilarMemories finds memories similar to the given content
-func (ms *MemoryStore) QuerySimilarMemories(ctx context.Context, content string, memType memory.MemoryType, limit int) ([]*memory.MemoryEntry, error) {
+func (ms *MemoryStore) QuerySimilarMemories(ctx context.Context, content string, memType MemoryType, limit uint64) ([]*MemoryEntry, error) {
 	// Generate embedding for the query content
 	embedding, err := ms.llmClient.GenerateEmbedding(ctx, content)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate query embedding: %w", err)
 	}
 
-	if limit <= 0 {
+	if limit == 0 {
 		limit = 10 // Default limit
 	}
 
@@ -134,8 +133,8 @@ func (ms *MemoryStore) QuerySimilarMemories(ctx context.Context, content string,
 }
 
 // BatchStoreMemories stores multiple memories efficiently
-func (ms *MemoryStore) BatchStoreMemories(ctx context.Context, entries []*memory.MemoryEntry) error {
-	batchSize := ms.config.BatchSize
+func (ms *MemoryStore) BatchStoreMemories(ctx context.Context, entries []*MemoryEntry) error {
+	batchSize := int(ms.config.BatchSize)
 	if batchSize <= 0 {
 		batchSize = 100
 	}
@@ -161,7 +160,7 @@ func (ms *MemoryStore) BatchStoreMemories(ctx context.Context, entries []*memory
 }
 
 // ConsolidateMemories processes episodic memories into semantic knowledge
-func (ms *MemoryStore) ConsolidateMemories(ctx context.Context, memories []*memory.MemoryEntry) error {
+func (ms *MemoryStore) ConsolidateMemories(ctx context.Context, memories []*MemoryEntry) error {
 	if len(memories) == 0 {
 		return nil
 	}
@@ -186,9 +185,9 @@ func (ms *MemoryStore) ConsolidateMemories(ctx context.Context, memories []*memo
 
 	// Create semantic memory entry
 	ms.counter++
-	semanticEntry := &memory.MemoryEntry{
+	semanticEntry := &MemoryEntry{
 		ID:        fmt.Sprintf("semantic_%d_%d", time.Now().Unix(), ms.counter),
-		Type:      memory.TypeSemantic,
+		Type:      TypeSemantic,
 		Content:   consolidatedContent,
 		Embedding: embedding,
 		Metadata: map[string]any{
@@ -246,7 +245,7 @@ func (ms *MemoryStore) HealthCheck(ctx context.Context) error {
 }
 
 // extractMemoryIDs extracts IDs from memory entries for metadata
-func extractMemoryIDs(memories []*memory.MemoryEntry) []string {
+func extractMemoryIDs(memories []*MemoryEntry) []string {
 	ids := make([]string, len(memories))
 	for i, mem := range memories {
 		ids[i] = mem.ID

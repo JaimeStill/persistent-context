@@ -9,10 +9,10 @@ import (
 
 // MemoryConfig holds memory processing configuration
 type MemoryConfig struct {
-	BatchSize             int           `mapstructure:"batch_size"`             // Batch size for processing
+	BatchSize             uint64        `mapstructure:"batch_size"`             // Batch size for processing
 	RetentionDays         int           `mapstructure:"retention_days"`         // Days to retain memories
 	ConsolidationInterval time.Duration `mapstructure:"consolidation_interval"` // How often to consolidate
-	MaxMemorySize         int           `mapstructure:"max_memory_size"`        // Max memories to keep
+	MaxMemorySize         uint64        `mapstructure:"max_memory_size"`        // Max memories to keep
 	StrengthThreshold     float32       `mapstructure:"strength_threshold"`     // Minimum strength to keep
 }
 
@@ -23,7 +23,7 @@ func (c *MemoryConfig) LoadConfig(v *viper.Viper) error {
 
 // ValidateConfig validates the configuration
 func (c *MemoryConfig) ValidateConfig() error {
-	if c.BatchSize <= 0 {
+	if c.BatchSize == 0 {
 		return fmt.Errorf("batch size must be positive")
 	}
 	
@@ -35,8 +35,8 @@ func (c *MemoryConfig) ValidateConfig() error {
 		return fmt.Errorf("consolidation interval must be positive")
 	}
 	
-	if c.MaxMemorySize < 0 {
-		return fmt.Errorf("max memory size cannot be negative")
+	if c.MaxMemorySize == 0 {
+		return fmt.Errorf("max memory size must be positive")
 	}
 	
 	if c.StrengthThreshold < 0 || c.StrengthThreshold > 1 {

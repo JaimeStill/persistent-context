@@ -1,218 +1,225 @@
-# Session 2 Execution Plan: Memory Pipeline Implementation
+# Session 3 Execution Plan: Event-Driven Memory Consolidation
 
 ## Overview
 
-Session 2 focuses on implementing the core memory capture and storage pipeline. Building on the infrastructure from Session 1, we'll integrate Qdrant for vector storage, Ollama for embeddings, and create a functional memory ingestion system.
+Session 3 focuses on implementing event-driven memory consolidation with context window awareness. Based on user feedback, we're moving away from time-based cycles to event-based consolidation that makes sense for LLM context processing.
+
+## Key Design Changes
+
+- **No Time-Based Cycles**: Consolidation driven by LLM lifecycle events, not time
+- **Context Window Awareness**: Safety checks to prevent consolidation when context is near capacity
+- **Event-Driven Architecture**: Consolidation triggered by meaningful events in the LLM's experience
 
 ## Session Progress
 
 ### 0. Documentation Setup (5 minutes) - COMPLETED
 
-- [x] Create `_context/sessions/` directory
-- [x] Archive current execution-plan.md to `_context/sessions/session-001.md`
-- [x] Create new execution-plan.md for Session 2
-- [x] Update CLAUDE.md with session handoff and configuration directives
+- [x] Archive Session 2 execution plan to `_context/sessions/session-002.md`
+- [x] Create new execution plan for Session 3
+- [ ] Update at end of session with results
 
-### 1. Configuration Architecture Refactor (20 minutes) - COMPLETED
+### 1. Wire Up Components (20 minutes) - PENDING
 
-- [x] Add Qdrant Go client dependency to go.mod
-- [x] Implement distributed configuration architecture with package-specific configs in config package
-- [x] Create `internal/config/vectordb.go` with VectorDB configuration
-- [x] Create `internal/config/llm.go` with LLM configuration
-- [x] Create `internal/config/memory.go` with memory processing configuration
-- [x] Create `internal/config/mcp.go` with MCP configuration
-- [x] Create `internal/config/http.go` with HTTP server configuration
-- [x] Create `internal/config/logging.go` with logging configuration
-- [x] Update central config loader to coordinate all package configurations
+- [ ] Update main.go to properly initialize all components
+- [ ] Fix Qdrant API compatibility issues (Search vs Query methods)
+- [ ] Connect MCP server to memory store
+- [ ] Test basic end-to-end memory capture flow
+- [ ] Verify health checks work across all services
 
-### 2. Qdrant Integration (15 minutes) - COMPLETED
+### 2. Implement Event-Driven Consolidation (25 minutes) - PENDING
 
-- [x] Create `internal/vectordb/qdrant_client.go` with connection management
-- [x] Initialize collections for different memory types with configurable names
-- [x] Implement store/retrieve/query operations with proper error handling
-- [x] Add connection health checks and collection management
-- [x] Support for memory metadata and vector embeddings
+- [ ] Create `internal/consolidation/` package structure
+- [ ] Implement `engine.go` with context-aware event handlers:
+  - `OnContextInit()` - Consolidate previous session memories
+  - `OnNewContext()` - Check for consolidation opportunities
+  - `OnThresholdReached()` - Trigger immediate consolidation with context checks
+  - `OnConversationEnd()` - Final consolidation and cleanup
+- [ ] Add context window monitoring:
 
-### 3. Ollama Integration (15 minutes) - COMPLETED
+  ```go
+  type ContextMonitor struct {
+      MaxTokens          int
+      CurrentTokens      int
+      ConsolidationCost  int
+      SafetyMargin       float64
+  }
+  ```
 
-- [x] Create `internal/llm/ollama_client.go` for LLM operations
-- [x] Implement embedding generation with configurable model
-- [x] Add embedding caching with configurable TTL
-- [x] Implement memory consolidation using LLM
-- [x] Add retry logic and error handling
-- [x] Create health check functionality
+- [ ] Implement configurable thresholds:
+  - Memory count threshold
+  - Total embedding size threshold
+  - Context window usage threshold (e.g., 70%)
+  - Minimum remaining tokens for consolidation
+- [ ] Create background consolidation worker with event queue
 
-### 4. Memory Storage Implementation (15 minutes) - COMPLETED
+### 3. Add Memory Lifecycle Management (10 minutes) - PENDING
 
-- [x] Update `storage/memory_store.go` to use Qdrant backend
-- [x] Implement vector embedding pipeline integration
-- [x] Add memory serialization/deserialization via Qdrant
-- [x] Create batch processing with configurable batch size
-- [x] Implement semantic memory consolidation
-- [x] Add similarity search and memory querying
-- [x] Integrate proper error handling and logging
+- [ ] Implement importance scoring algorithm:
+  - Access frequency tracking
+  - Semantic relevance scoring
+  - Recency and decay factors
+- [ ] Create memory pruning for low-importance memories
+- [ ] Add pre-consolidation memory selection to minimize token usage
+- [ ] Implement metadata tracking for consolidation history
 
-### 4. MCP Hook Implementation (10 minutes) - PENDING
+### 4. Testing & Documentation (5 minutes) - PENDING
 
-- [ ] Update config/config.go with MCP settings (buffer sizes, worker counts)
-- [ ] Update MCP server to capture actual context
-- [ ] Create memory ingestion worker with configurable buffer
-- [ ] Implement async processing queue
-- [ ] Add error handling and configurable retry logic
-- [ ] Test with sample captures
-
-### 5. Integration Testing (10 minutes) - PENDING
-
-- [ ] Create integration tests for memory pipeline
-- [ ] Test end-to-end capture and storage flow
-- [ ] Verify vector search functionality
-- [ ] Add basic performance benchmarks
-- [ ] Document test results
-
-### 6. Final Documentation (5 minutes) - PENDING
-
-- [ ] Update execution-plan.md with all results
-- [ ] Document any issues or blockers
-- [ ] Note improvements for next session
-- [ ] Ensure clean handoff state
-
-## Configuration Strategy
-
-### New Config Sections to Add
-
-```go
-type Config struct {
-    // Existing sections...
-    VectorDB VectorDBConfig `mapstructure:"vectordb"`
-    LLM      LLMConfig      `mapstructure:"llm"`
-    Memory   MemoryConfig   `mapstructure:"memory"`
-    MCP      MCPConfig      `mapstructure:"mcp"`
-}
-
-type VectorDBConfig struct {
-    Provider        string            `mapstructure:"provider"`
-    CollectionNames map[string]string `mapstructure:"collection_names"`
-    VectorDimension int              `mapstructure:"vector_dimension"`
-    OnDiskPayload   bool             `mapstructure:"on_disk_payload"`
-}
-
-type LLMConfig struct {
-    Provider          string        `mapstructure:"provider"`
-    EmbeddingModel    string        `mapstructure:"embedding_model"`
-    ConsolidationModel string       `mapstructure:"consolidation_model"`
-    CacheEnabled      bool          `mapstructure:"cache_enabled"`
-    CacheTTL          time.Duration `mapstructure:"cache_ttl"`
-}
-
-type MemoryConfig struct {
-    BatchSize         int           `mapstructure:"batch_size"`
-    RetentionDays     int           `mapstructure:"retention_days"`
-    ConsolidationInterval time.Duration `mapstructure:"consolidation_interval"`
-}
-
-type MCPConfig struct {
-    BufferSize    int `mapstructure:"buffer_size"`
-    WorkerCount   int `mapstructure:"worker_count"`
-    RetryAttempts int `mapstructure:"retry_attempts"`
-    RetryDelay    time.Duration `mapstructure:"retry_delay"`
-}
-```
+- [ ] Test event-driven consolidation triggers
+- [ ] Test context window safety mechanisms
+- [ ] Document consolidation behavior
+- [ ] Update execution plan with results
+- [ ] Create handoff notes for next session
 
 ## Implementation Details
 
-### Qdrant Client Structure
+### Event System Architecture
 
 ```go
-type QdrantClient struct {
-    client      *qdrant.Client
-    config      *VectorDBConfig
-    collections map[MemoryType]string
+// Consolidation events with context awareness
+type ConsolidationEvent struct {
+    Type             EventType
+    Trigger          string
+    Memories         []Memory
+    ContextState     ContextState
+    Timestamp        time.Time
+}
+
+type EventType int
+const (
+    ContextInit EventType = iota
+    NewContext
+    ThresholdReached
+    ConversationEnd
+)
+
+type ContextState struct {
+    WindowSize       int
+    CurrentUsage     int
+    EstimatedCost    int
+    CanProceed       bool
 }
 ```
 
-### Ollama Embedding Pipeline
+### Context-Aware Consolidation
 
 ```go
-type EmbeddingPipeline struct {
-    ollama *OllamaClient
-    config *LLMConfig
-    cache  map[string][]float32
+func (c *ConsolidationEngine) OnThresholdReached(memories []Memory) error {
+    // Check if we have enough context window remaining
+    remainingTokens := c.monitor.MaxTokens - c.monitor.CurrentTokens
+    requiredTokens := c.estimateConsolidationTokens(memories)
+    
+    if remainingTokens < requiredTokens * 1.5 { // 50% safety buffer
+        // Defer consolidation or trigger early termination
+        return c.scheduleEarlyConsolidation()
+    }
+    
+    return c.consolidate(memories)
+}
+
+// Pre-consolidation safety check
+func (c *ConsolidationEngine) canSafelyConsolidate() bool {
+    state := c.getContextState()
+    return state.CurrentUsage + state.EstimatedCost < 
+           int(float64(state.WindowSize) * c.config.SafetyMargin)
 }
 ```
 
-### Memory Ingestion Worker
+### Memory Importance Scoring
 
 ```go
-type IngestionWorker struct {
-    queue    chan *CaptureRequest
-    vectorDB *QdrantClient
-    embedder *EmbeddingPipeline
-    config   *MemoryConfig
+type MemoryScore struct {
+    AccessCount      int
+    LastAccessed     time.Time
+    SemanticRelevance float32
+    DecayFactor      float32
+    TotalScore       float32
+}
+
+func (c *ConsolidationEngine) scoreMemory(m *Memory) MemoryScore {
+    // Implementation will consider multiple factors
 }
 ```
 
 ## Success Criteria
 
-- All new components use configuration from config package
-- MCP server successfully captures context from hooks
-- Memories are embedded and stored in Qdrant
-- Vector similarity search returns relevant memories
-- Integration tests pass
-- Documentation provides clear handoff for Session 3
+- All components integrated and working together
+- Event-driven consolidation responding to LLM lifecycle events
+- Context window safety preventing consolidation overflow
+- Memory lifecycle managed based on importance scoring
+- System ready for continuous operation
+- Clear documentation for handoff
 
 ## Notes
 
-- Focusing on learning fundamentals by implementing components from scratch
-- Configuration-driven design allows for flexibility without code changes
-- Priority is understanding how these systems work at a low level
+- Focus on events that make sense for LLM context processing
+- Ensure consolidation never causes context window overflow
+- Design for extensibility to add more event types later
+- Keep implementation simple but robust
 
-## Session 2 Results
+## Session 3 Results
 
 ### Major Accomplishments
 
-1. **Configuration Architecture Breakthrough**: Implemented a clean distributed configuration system where all package-specific configurations are organized in the config package as separate files (http.go, llm.go, vectordb.go, etc.). This eliminates import cycles and provides better separation of concerns.
+1. **Service Registration Architecture**: Implemented complete service registry and lifecycle management system in `app/` package:
+   - Base service interface with initialization, startup, shutdown, health checks
+   - Service registry with dependency resolution and startup ordering
+   - Lifecycle manager for graceful shutdown handling
 
-2. **Complete Memory Pipeline**: Built end-to-end memory capture and storage pipeline with:
-   - Qdrant vector database integration with full CRUD operations
-   - Ollama LLM client with embedding generation and caching
-   - Memory consolidation from episodic to semantic knowledge
-   - Batch processing and similarity search capabilities
+2. **Interface Abstraction Pattern**: Created proper abstractions for all infrastructure:
+   - `VectorDB` interface (internal/vectordb/vectordb.go) with Qdrant implementation
+   - `LLM` interface (internal/llm/llm.go) with Ollama implementation
+   - Service wrappers for vectordb, llm, memory, http, mcp
 
-3. **Robust Infrastructure**: All components include proper error handling, health checks, configuration management, and structured logging.
+3. **Package Reorganization**:
 
-### Key Technical Decisions
+   - Merged `internal/storage` into `internal/memory` for better cohesion
+   - Created `internal/types` package to resolve import cycles
+   - Moved all memory types to shared location
 
-- **Distributed Config**: Package-specific config files in central config package prevents import cycles
-- **Vector-First Design**: All memories stored with embeddings for semantic search
-- **LLM Integration**: Ollama used for both embedding generation and memory consolidation
-- **Batch Processing**: Configurable batch sizes for efficient memory processing
+4. **Configuration Improvements**:
+   - Updated memory config to use `uint64` for BatchSize/MaxMemorySize to match VectorDB requirements
+   - Fixed HTTP server to accept HTTPConfig instead of full Config
 
-### What Works
+5. **API Compatibility Fixes**:
+   - Updated Qdrant client to use modern Go client API (Query vs Search)
+   - Fixed method signatures and response handling
 
-- Configuration loading and validation
-- Qdrant client with collection management
-- Ollama embedding generation with retry logic
-- Memory storage with vector embeddings
-- Health check infrastructure
+### Current Status
 
-## Issues and Blockers
+**Completed:**
 
-### Remaining Tasks for Session 3
+- Service registry and lifecycle infrastructure
+- All service wrappers with proper interfaces
+- Package reorganization
+- Basic API compatibility fixes
 
-1. **MCP Server Updates**: Update MCP server to use new memory storage system
-2. **Integration Testing**: Test end-to-end memory pipeline
-3. **Main Application Integration**: Update main.go to wire up all components
-4. **API Fixes**: Some Qdrant API methods need correction (Search vs Query methods)
+**In Progress:**
 
-### Known Issues
+- Import cycle resolution (types package created, vectordb updated)
+- Memory store needs to import types instead of defining locally
 
-1. **Qdrant API Compatibility**: Some method calls in qdrant_client.go may need adjustment for latest Qdrant Go client
-2. **Integration Wiring**: Components built but not yet wired together in main application
-3. **Testing**: No integration tests created yet
+**Pending for Session 4:**
 
-## Next Steps (Session 3)
+- Complete import cycle fixes (update memory/store.go and qdrantdb.go imports)
+- Build pipeline infrastructure and memory pipeline
+- Create app orchestrator and update main.go
+- Implement consolidation engine with event handlers
+- Add context window safety and lifecycle management
 
-- Implement sleep-like consolidation cycles
-- Create episodic→semantic transformation logic
-- Add forgetting curve algorithm
-- Build basic persona export functionality
+### Architecture Achievements
+
+The codebase now has a solid service-oriented architecture with:
+
+- Clean separation between core business logic (`internal/`) and orchestration (`app/`)
+- Interface-based design allowing easy swapping of implementations
+- Proper dependency injection and lifecycle management
+- Foundation ready for pipeline middleware and consolidation engine
+
+### Next Session Priority
+
+1. **Fix remaining import issues** - Complete the types package migration
+2. **Build app orchestrator** - Wire up all services in main.go
+3. **Implement memory pipeline** - Create middleware infrastructure
+4. **Add consolidation engine** - Event-driven consolidation system
+
+The foundation is now solid for implementing the event-driven consolidation system discussed with the user.

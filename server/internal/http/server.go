@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 // Server represents the HTTP server
 type Server struct {
 	server *http.Server
-	config *config.Config
+	config *config.HTTPConfig
 	engine *gin.Engine
 }
 
@@ -23,35 +24,29 @@ type HealthChecker interface {
 
 // Dependencies holds all the dependencies for the HTTP server
 type Dependencies struct {
-	QdrantHealth HealthChecker
-	OllamaHealth HealthChecker
+	VectorDBHealth HealthChecker
+	LLMHealth      HealthChecker
 }
 
 // NewServer creates a new HTTP server using Gin
-func NewServer(cfg *config.Config, deps *Dependencies) *Server {
-	// Set Gin mode based on config
-	if cfg.Logging.Level == "debug" {
-		gin.SetMode(gin.DebugMode)
-	} else {
-		gin.SetMode(gin.ReleaseMode)
-	}
+func NewServer(cfg *config.HTTPConfig, deps *Dependencies) *Server {
+	// Set Gin mode - for now just use release mode
+	gin.SetMode(gin.ReleaseMode)
 
 	engine := gin.New()
 
 	// Add middleware
 	engine.Use(gin.Recovery())
-	if cfg.Logging.Level == "debug" {
-		engine.Use(gin.Logger())
-	}
+	engine.Use(gin.Logger())
 
 	s := &Server{
 		config: cfg,
 		engine: engine,
 		server: &http.Server{
-			Addr:         ":" + cfg.HTTP.Port,
+			Addr:         fmt.Sprintf(":%d", cfg.Port),
 			Handler:      engine,
-			ReadTimeout:  time.Duration(cfg.HTTP.ReadTimeout) * time.Second,
-			WriteTimeout: time.Duration(cfg.HTTP.WriteTimeout) * time.Second,
+			ReadTimeout:  time.Duration(cfg.ReadTimeout) * time.Second,
+			WriteTimeout: time.Duration(cfg.WriteTimeout) * time.Second,
 		},
 	}
 
@@ -97,27 +92,27 @@ func (s *Server) handleReady(deps *Dependencies) gin.HandlerFunc {
 		defer cancel()
 
 		// Check dependencies
-		qdrantStatus := "healthy"
-		ollamaStatus := "healthy"
+		vectordbStatus := "healthy"
+		llmStatus := "healthy"
 
-		if deps.QdrantHealth != nil {
-			if err := deps.QdrantHealth.HealthCheck(ctx); err != nil {
-				qdrantStatus = "unhealthy"
+		if deps.VectorDBHealth != nil {
+			if err := deps.VectorDBHealth.HealthCheck(ctx); err != nil {
+				vectordbStatus = "unhealthy"
 			}
 		} else {
-			qdrantStatus = "unknown"
+			vectordbStatus = "unknown"
 		}
 
-		if deps.OllamaHealth != nil {
-			if err := deps.OllamaHealth.HealthCheck(ctx); err != nil {
-				ollamaStatus = "unhealthy"
+		if deps.LLMHealth != nil {
+			if err := deps.LLMHealth.HealthCheck(ctx); err != nil {
+				llmStatus = "unhealthy"
 			}
 		} else {
-			ollamaStatus = "unknown"
+			llmStatus = "unknown"
 		}
 
 		// Determine overall readiness
-		ready := qdrantStatus == "healthy" && ollamaStatus == "healthy"
+		ready := vectordbStatus == "healthy" && llmStatus == "healthy"
 		status := http.StatusOK
 		if !ready {
 			status = http.StatusServiceUnavailable
@@ -127,8 +122,8 @@ func (s *Server) handleReady(deps *Dependencies) gin.HandlerFunc {
 			"status": map[bool]string{true: "ready", false: "not_ready"}[ready],
 			"ready":  ready,
 			"dependencies": gin.H{
-				"qdrant": qdrantStatus,
-				"ollama": ollamaStatus,
+				"vectordb": vectordbStatus,
+				"llm":      llmStatus,
 			},
 			"timestamp": time.Now().UTC().Format(time.RFC3339),
 		})

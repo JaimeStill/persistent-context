@@ -1,9 +1,38 @@
-package memory
+package types
 
 import (
 	"context"
 	"time"
 )
+
+// MemoryType represents different types of memories
+type MemoryType string
+
+const (
+	// TypeEpisodic represents specific experiences and events
+	TypeEpisodic MemoryType = "episodic"
+	
+	// TypeSemantic represents general knowledge and facts
+	TypeSemantic MemoryType = "semantic"
+	
+	// TypeProcedural represents learned skills and procedures
+	TypeProcedural MemoryType = "procedural"
+	
+	// TypeMetacognitive represents knowledge about thinking processes
+	TypeMetacognitive MemoryType = "metacognitive"
+)
+
+// MemoryEntry represents a single memory stored in the system
+type MemoryEntry struct {
+	ID         string            `json:"id"`
+	Type       MemoryType        `json:"type"`
+	Content    string            `json:"content"`
+	Embedding  []float32         `json:"embedding,omitempty"`
+	Metadata   map[string]any    `json:"metadata,omitempty"`
+	CreatedAt  time.Time         `json:"created_at"`
+	AccessedAt time.Time         `json:"accessed_at"`
+	Strength   float32           `json:"strength"`
+}
 
 // Memory represents the base interface for all memory types
 type Memory interface {
@@ -18,28 +47,6 @@ type Memory interface {
 	
 	// Transform converts this memory type to another (e.g., episodic to semantic)
 	Transform(ctx context.Context, targetType MemoryType) (Memory, error)
-}
-
-// MemoryType represents the different types of memory
-type MemoryType string
-
-const (
-	TypeEpisodic      MemoryType = "episodic"
-	TypeSemantic      MemoryType = "semantic"
-	TypeProcedural    MemoryType = "procedural"
-	TypeMetacognitive MemoryType = "metacognitive"
-)
-
-// MemoryEntry represents a single memory with metadata
-type MemoryEntry struct {
-	ID         string         `json:"id"`
-	Type       MemoryType     `json:"type"`
-	Content    string         `json:"content"`
-	Embedding  []float32      `json:"embedding,omitempty"`
-	Metadata   map[string]any `json:"metadata"`
-	CreatedAt  time.Time      `json:"created_at"`
-	AccessedAt time.Time      `json:"accessed_at"`
-	Strength   float32        `json:"strength"` // 0.0 to 1.0
 }
 
 // EpisodicMemory represents raw, time-based experiences
