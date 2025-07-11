@@ -33,6 +33,7 @@ type Config struct {
 	CollectionNames map[string]string `mapstructure:"collection_names"`
 	VectorDimension int               `mapstructure:"vector_dimension"`
 	OnDiskPayload   bool              `mapstructure:"on_disk_payload"`
+	Insecure        bool              `mapstructure:"insecure"`
 }
 
 // NewVectorDB creates a new VectorDB implementation based on the provider

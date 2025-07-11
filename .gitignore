@@ -1,3 +1,4 @@
 data/ollama
 data/personas
 data/qdrant
+server/bin

@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.24.3-alpine AS builder
+FROM golang:1.24-alpine3.21 AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git
@@ -17,13 +17,13 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o bin/server ./cmd/main.go
 
 # Final stage
-FROM alpine:latest
+FROM alpine:3.21
 
 # Install ca-certificates for HTTPS calls
-RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add ca-certificates-bundle
 
 # Create non-root user
 RUN addgroup -g 1000 -S appgroup && \
@@ -37,10 +37,10 @@ RUN mkdir -p /data/personas && \
 WORKDIR /app
 
 # Copy binary from builder stage
-COPY --from=builder /app/main .
+COPY --from=builder /app/bin/server .
 
 # Change ownership to non-root user
-RUN chown appuser:appgroup /app/main
+RUN chown appuser:appgroup /app/server
 
 # Switch to non-root user
 USER appuser
@@ -53,4 +53,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
 # Run the application
-CMD ["./main"]
+CMD ["./server"]

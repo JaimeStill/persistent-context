@@ -12,7 +12,14 @@ services:
       - QDRANT__SERVICE__HTTP_PORT=6333
       - QDRANT__SERVICE__GRPC_PORT=6334
       - QDRANT__STORAGE__ON_DISK_PAYLOAD=true
+      - QDRANT__SERVICE__ENABLE_TLS=false
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   ollama:
     image: ollama/ollama:latest
@@ -37,6 +44,12 @@ services:
                     sleep 5 &&
                     (ollama list | grep phi3:mini || ollama pull phi3:mini) &&
                     wait"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
 
   persistent-context:
     build:
@@ -46,24 +59,82 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - qdrant
-      - ollama
+      qdrant:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
     environment:
+      # HTTP Server Configuration
       - APP_SERVER_PORT=8080
-      - APP_QDRANT_URL=http://qdrant:6333
-      - APP_OLLAMA_URL=http://ollama:11434
-      - APP_STORAGE_PERSONA_PATH=/data/personas
+      - APP_SERVER_READ_TIMEOUT=10
+      - APP_SERVER_WRITE_TIMEOUT=10
+      - APP_SERVER_SHUTDOWN_TIMEOUT=30
+      
+      # Logging Configuration
       - APP_LOGGING_LEVEL=info
       - APP_LOGGING_FORMAT=json
+      
+      # Vector Database Configuration
+      - APP_VECTORDB_PROVIDER=qdrant
+      - APP_VECTORDB_URL=qdrant:6334
+      - APP_VECTORDB_INSECURE=true
+      - APP_VECTORDB_VECTOR_DIMENSION=1536
+      - APP_VECTORDB_ON_DISK_PAYLOAD=true
+      - APP_VECTORDB_TIMEOUT=30s
+      - APP_VECTORDB_COLLECTION_NAMES_EPISODIC=episodic_memories
+      - APP_VECTORDB_COLLECTION_NAMES_SEMANTIC=semantic_memories
+      - APP_VECTORDB_COLLECTION_NAMES_PROCEDURAL=procedural_memories
+      - APP_VECTORDB_COLLECTION_NAMES_METACOGNITIVE=metacognitive_memories
+      
+      # LLM Configuration
+      - APP_LLM_PROVIDER=ollama
+      - APP_LLM_URL=http://ollama:11434
+      - APP_LLM_EMBEDDING_MODEL=phi3:mini
+      - APP_LLM_CONSOLIDATION_MODEL=phi3:mini
+      - APP_LLM_CACHE_ENABLED=true
+      - APP_LLM_CACHE_TTL=1h
+      - APP_LLM_TIMEOUT=30s
+      - APP_LLM_MAX_RETRIES=3
+      
+      # Memory Configuration
+      - APP_MEMORY_BATCH_SIZE=100
+      - APP_MEMORY_RETENTION_DAYS=30
+      - APP_MEMORY_CONSOLIDATION_INTERVAL=6h
+      - APP_MEMORY_MAX_MEMORY_SIZE=10000
+      - APP_MEMORY_STRENGTH_THRESHOLD=0.1
+      
+      # Storage Configuration
+      - APP_STORAGE_PERSONA_PATH=/data/personas
+      
+      # MCP Configuration
+      - APP_MCP_ENABLED=false
+      - APP_MCP_NAME=persistent-context
+      - APP_MCP_VERSION=1.0.0
+      - APP_MCP_BUFFER_SIZE=1000
+      - APP_MCP_WORKER_COUNT=2
+      - APP_MCP_RETRY_ATTEMPTS=3
+      - APP_MCP_RETRY_DELAY=1s
+      - APP_MCP_TIMEOUT=30s
+      
+      # Consolidation Configuration
+      - APP_CONSOLIDATION_MAX_TOKENS=128000
+      - APP_CONSOLIDATION_SAFETY_MARGIN=0.7
+      - APP_CONSOLIDATION_MEMORY_COUNT_THRESHOLD=50
+      - APP_CONSOLIDATION_EMBEDDING_SIZE_THRESHOLD=1048576
+      - APP_CONSOLIDATION_CONTEXT_USAGE_THRESHOLD=0.8
+      - APP_CONSOLIDATION_DECAY_FACTOR=0.01
+      - APP_CONSOLIDATION_ACCESS_WEIGHT=2.0
+      - APP_CONSOLIDATION_RELEVANCE_WEIGHT=1.5
+      - APP_CONSOLIDATION_ENABLED=true
     volumes:
       - ./data/personas:/data/personas
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
-      interval: 30s
+      interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 20s
 
 networks:
   default:

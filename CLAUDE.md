@@ -29,6 +29,12 @@ The only restriction within this repository is that any folder prefixed with a `
 - Organize Docker volumes under a consistent root (e.g., `./data/`) for cleaner structure
 - Implement proper separation of concerns with dedicated packages for each functionality
 
+### Build Standards
+
+- **Consistent Build Output**: Always output Go builds to `bin/server` for consistent .gitignore management
+- **Docker Build Path**: Use `bin/server` as the build target in Dockerfiles
+- **Binary Location**: Ensure all build scripts and processes use the standardized `bin/server` output path
+
 ### Development Approach
 
 - Break down work into discrete, completable tasks
@@ -40,17 +46,20 @@ The only restriction within this repository is that any folder prefixed with a `
 Every development session MUST follow this exact structure:
 
 **Part 0: Documentation Setup (First Task of Every Session)**
+
 - Archive current execution-plan.md to `_context/sessions/session-XXX.md`
 - Create new execution-plan.md with current session agenda and progress tracking
 - Update CLAUDE.md with any new directives or improvements
 
 **During Session: Continuous Updates**
+
 - Update execution-plan.md continuously during development
 - Mark tasks as completed with relevant implementation details
 - Document any blockers or issues discovered
 - The execution plan serves as both progress tracker and handoff document
 
 **Part N: Documentation Cleanup (Final Task of Every Session)**
+
 - Update execution-plan.md with session results and accomplishments
 - Update tasks.md with any new tasks or issues discovered
 - Note improvements and next steps for future sessions

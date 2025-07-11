@@ -21,9 +21,12 @@ type QdrantDB struct {
 
 // NewQdrantDB creates a new Qdrant database implementation
 func NewQdrantDB(config *Config) (*QdrantDB, error) {
+	host, port := parseGRPCAddress(config.URL)
+	
 	client, err := qdrant.NewClient(&qdrant.Config{
-		Host: extractHost(config.URL),
-		Port: extractPort(config.URL),
+		Host:   host,
+		Port:   port,
+		UseTLS: !config.Insecure,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Qdrant client: %w", err)
@@ -316,34 +319,17 @@ func (qc *QdrantDB) scoredPointToMemoryEntry(scoredPoint *qdrant.ScoredPoint) (*
 }
 
 // Helper functions to extract host and port from URL
-func extractHost(url string) string {
-	// Simple extraction - assumes format http://host:port
-	if strings.HasPrefix(url, "http://") {
-		url = strings.TrimPrefix(url, "http://")
-	} else if strings.HasPrefix(url, "https://") {
-		url = strings.TrimPrefix(url, "https://")
-	}
-	
-	if idx := strings.LastIndex(url, ":"); idx != -1 {
-		return url[:idx]
-	}
-	return url
-}
-
-func extractPort(url string) int {
-	// Simple extraction - assumes format http://host:port
-	if strings.HasPrefix(url, "http://") {
-		url = strings.TrimPrefix(url, "http://")
-	} else if strings.HasPrefix(url, "https://") {
-		url = strings.TrimPrefix(url, "https://")
-	}
-	
-	if idx := strings.LastIndex(url, ":"); idx != -1 {
-		if port := url[idx+1:]; port != "" {
-			if p, err := strconv.Atoi(port); err == nil {
-				return p
+// parseGRPCAddress parses a gRPC address in host:port format
+// Supports both "host:port" and "host" (defaults to port 6334)
+func parseGRPCAddress(address string) (host string, port int) {
+	if idx := strings.LastIndex(address, ":"); idx != -1 {
+		host = address[:idx]
+		if portStr := address[idx+1:]; portStr != "" {
+			if p, err := strconv.Atoi(portStr); err == nil {
+				return host, p
 			}
 		}
 	}
-	return 6333 // Default Qdrant port
+	// No port specified, use host as-is and default gRPC port
+	return address, 6334
 }

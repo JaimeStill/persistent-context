@@ -33,10 +33,11 @@ func (s *VectorDBService) Initialize(ctx context.Context) error {
 	vdbConfig := &vectordb.Config{
 		Provider:        s.config.Provider,
 		URL:             s.config.URL,
-		APIKey:          "", // API key not needed for Qdrant
+		APIKey:          "", // API key not needed for development
 		CollectionNames: s.config.CollectionNames,
 		VectorDimension: s.config.VectorDimension,
 		OnDiskPayload:   s.config.OnDiskPayload,
+		Insecure:        s.config.Insecure,
 	}
 
 	// Create the vector database implementation

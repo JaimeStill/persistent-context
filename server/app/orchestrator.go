@@ -60,6 +60,13 @@ func (o *Orchestrator) RegisterServices(ctx context.Context) error {
 	}
 	o.services["http"] = httpService
 
+	// Register Consolidation service (depends on memory and llm)
+	consolidationService := services.NewConsolidationService(&o.config.Consolidation, o.logger.Logger)
+	if err := o.registry.Register(consolidationService); err != nil {
+		return fmt.Errorf("failed to register consolidation service: %w", err)
+	}
+	o.services["consolidation"] = consolidationService
+
 	// Register MCP service (depends on memory)
 	mcpService := services.NewMCPService(&o.config.MCP)
 	if err := o.registry.Register(mcpService); err != nil {
@@ -87,6 +94,11 @@ func (o *Orchestrator) Initialize(ctx context.Context) error {
 		return fmt.Errorf("failed to inject dependencies: %w", err)
 	}
 	
+	// Finally, wire cross-service runtime dependencies
+	if err := o.wireServices(); err != nil {
+		return fmt.Errorf("failed to wire cross-service dependencies: %w", err)
+	}
+	
 	o.logger.Info("All services initialized successfully")
 	return nil
 }
@@ -97,12 +109,18 @@ func (o *Orchestrator) injectDependencies() error {
 	vectordbService := o.services["vectordb"].(*services.VectorDBService)
 	llmService := o.services["llm"].(*services.LLMService)
 	memoryService := o.services["memory"].(*services.MemoryService)
+	consolidationService := o.services["consolidation"].(*services.ConsolidationService)
 	httpService := o.services["http"].(*services.HTTPService)
 	mcpService := o.services["mcp"].(*services.MCPService)
 	
 	// Initialize memory service with its dependencies
 	if err := memoryService.InitializeWithDependencies(vectordbService.DB(), llmService.LLM()); err != nil {
 		return fmt.Errorf("failed to initialize memory service with dependencies: %w", err)
+	}
+	
+	// Initialize consolidation service with internal components (like memory/MCP pattern)
+	if err := consolidationService.InitializeWithDependencies(memoryService.Store(), llmService.LLM()); err != nil {
+		return fmt.Errorf("failed to initialize consolidation service with dependencies: %w", err)
 	}
 	
 	// Initialize HTTP service with its dependencies
@@ -115,6 +133,20 @@ func (o *Orchestrator) injectDependencies() error {
 		return fmt.Errorf("failed to initialize MCP service with dependencies: %w", err)
 	}
 	
+	return nil
+}
+
+// wireServices handles cross-service runtime dependencies after all services are initialized
+func (o *Orchestrator) wireServices() error {
+	// Get service instances
+	memoryService := o.services["memory"].(*services.MemoryService)
+	consolidationService := o.services["consolidation"].(*services.ConsolidationService)
+	
+	// Wire consolidation service into memory service middleware
+	// This allows memory processing to trigger consolidation events
+	memoryService.SetConsolidationService(consolidationService)
+	
+	o.logger.Info("Cross-service dependencies wired successfully")
 	return nil
 }
 
@@ -189,6 +221,14 @@ func (o *Orchestrator) GetHTTPService() *services.HTTPService {
 // GetMCPService is a convenience method to get the MCP service
 func (o *Orchestrator) GetMCPService() *services.MCPService {
 	if service, ok := o.services["mcp"].(*services.MCPService); ok {
+		return service
+	}
+	return nil
+}
+
+// GetConsolidationService is a convenience method to get the consolidation service
+func (o *Orchestrator) GetConsolidationService() *services.ConsolidationService {
+	if service, ok := o.services["consolidation"].(*services.ConsolidationService); ok {
 		return service
 	}
 	return nil

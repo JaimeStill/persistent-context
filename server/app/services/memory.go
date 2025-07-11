@@ -7,6 +7,7 @@ import (
 
 	"github.com/JaimeStill/persistent-context/app/middleware"
 	"github.com/JaimeStill/persistent-context/internal/config"
+	"github.com/JaimeStill/persistent-context/internal/consolidation"
 	"github.com/JaimeStill/persistent-context/internal/llm"
 	"github.com/JaimeStill/persistent-context/internal/memory"
 	"github.com/JaimeStill/persistent-context/internal/types"
@@ -16,9 +17,10 @@ import (
 // MemoryService wraps memory storage operations as a managed service
 type MemoryService struct {
 	BaseService
-	store    *memory.MemoryStore
-	config   *config.MemoryConfig
-	pipeline *middleware.Pipeline
+	store         *memory.MemoryStore
+	config        *config.MemoryConfig
+	pipeline      *middleware.Pipeline
+	consolidation *ConsolidationService
 }
 
 // NewMemoryService creates a new memory service
@@ -64,6 +66,15 @@ func (s *MemoryService) InitializeWithDependencies(vdb vectordb.VectorDB, llmCli
 	return nil
 }
 
+// SetConsolidationService sets the consolidation service for middleware integration
+func (s *MemoryService) SetConsolidationService(consolidation *ConsolidationService) {
+	s.consolidation = consolidation
+	// Re-setup pipeline with consolidation integration
+	if s.pipeline != nil {
+		s.setupPipeline()
+	}
+}
+
 // setupPipeline configures the memory processing pipeline
 func (s *MemoryService) setupPipeline() {
 	// Add middleware in order of execution
@@ -71,13 +82,25 @@ func (s *MemoryService) setupPipeline() {
 	s.pipeline.Use(middleware.ValidationMiddleware)
 	s.pipeline.Use(middleware.EnrichmentMiddleware)
 	
-	// Add consolidation middleware (if consolidation engine is available)
-	// This would trigger consolidation events based on memory processing
-	s.pipeline.Use(middleware.ConsolidationMiddleware(func(ctx context.Context, memCtx *middleware.MemoryContext) error {
-		// TODO: Integrate with consolidation engine when available
-		slog.Info("Consolidation trigger placeholder", "memory_id", memCtx.Memory.ID)
+	// Add consolidation middleware (if consolidation service is available)
+	// This triggers consolidation events based on memory processing
+	consolidationTrigger := func(ctx context.Context, memCtx *middleware.MemoryContext) error {
+		if s.consolidation != nil {
+			// Trigger threshold-based consolidation check
+			if err := s.consolidation.TriggerConsolidation(
+				consolidation.ThresholdReached,
+				"memory_processing",
+				[]*types.MemoryEntry{memCtx.Memory},
+			); err != nil {
+				slog.Error("Failed to trigger consolidation", "error", err, "memory_id", memCtx.Memory.ID)
+				return err
+			}
+		} else {
+			slog.Debug("Consolidation service not available", "memory_id", memCtx.Memory.ID)
+		}
 		return nil
-	}))
+	}
+	s.pipeline.Use(middleware.ConsolidationMiddleware(consolidationTrigger))
 }
 
 // Start begins memory operations

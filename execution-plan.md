@@ -1,255 +1,168 @@
-# Session 4 Execution Plan: Complete Integration and Event-Driven Consolidation
+# Session 5 Execution Plan: Production Integration and Containerization
 
 ## Overview
 
-Session 4 focuses on completing the integration of all components and implementing the event-driven consolidation system. This extended session will resolve all remaining issues from Session 3 and deliver a fully functional memory consolidation system.
+Session 5 focuses on completing the integration of the consolidation system and establishing a production-ready containerized deployment. This session resolves the final integration gaps from Session 4 and validates the complete system end-to-end.
 
 ## Session Progress
 
-### 0. Documentation Setup (5 minutes) - COMPLETED
+### 0. Documentation Setup (5 minutes) - IN PROGRESS
 
-- [x] Archive Session 3 execution plan to `_context/sessions/session-003.md`
-- [x] Create new execution plan for Session 4
-- [x] Update CLAUDE.md with explicit session management directive
+- [x] Archive Session 4 execution plan to `_context/sessions/session-004.md`
+- [ ] Create new execution plan for Session 5
+- [ ] Update CLAUDE.md if needed
 
-### 1. Resolve Session 3 Blockers (30 minutes) - PENDING
+### 1. Consolidation Service Integration (15 minutes) - PENDING
 
-**1.1 Fix Import Cycles (10 minutes)**
+**1.1 Create Consolidation Service (10 minutes)**
 
-- [ ] Fix main.go import: `internal/storage` → `internal/memory`
-- [ ] Update memory/store.go to import types from `internal/types` package
-- [ ] Update vectordb/qdrantdb.go to import types from `internal/types` package
-- [ ] Ensure all imports are consistent and build passes
+- [ ] Create `app/services/consolidation.go` service wrapper for consolidation engine
+- [ ] Implement proper service lifecycle management (Initialize, Start, Stop, HealthCheck)
+- [ ] Add service dependencies and configuration integration
 
-**1.2 Complete Service Architecture (20 minutes)**
+**1.2 Service Registry Integration (5 minutes)**
 
-- [ ] Create app orchestrator in `app/orchestrator.go`
-- [ ] Implement service wrappers for all components
-- [ ] Update main.go to use service registry instead of manual initialization
-- [ ] Test service startup/shutdown lifecycle with proper dependency resolution
+- [ ] Integrate consolidation service into orchestrator's service registry
+- [ ] Wire consolidation engine into memory service middleware (replace TODO placeholder)
+- [ ] Test consolidation event triggering and context window safety
 
-### 2. Event-Driven Consolidation Engine (45 minutes) - PENDING
+### 2. Docker Environment Optimization (20 minutes) - PENDING
 
-**2.1 Core Consolidation Architecture (25 minutes)**
+**2.1 Dockerfile Fixes (5 minutes)**
 
-- [ ] Create `internal/consolidation/` package
-- [ ] Implement `engine.go` with event-driven handlers:
-  - `OnContextInit()` - Consolidate previous session memories
-  - `OnThresholdReached()` - Trigger consolidation with context safety
-  - `OnConversationEnd()` - Final consolidation and cleanup
-- [ ] Add `ContextMonitor` with token tracking and safety margins
-- [ ] Create configurable thresholds (memory count, embedding size, context usage)
+- [ ] Fix server/Dockerfile build path issue (currently builds from ./cmd/main.go, should be ./main.go)
+- [ ] Validate Docker build process and binary location
 
-**2.2 Memory Lifecycle Management (20 minutes)**
+**2.2 Environment Variable Configuration (15 minutes)**
 
-- [ ] Implement importance scoring algorithm with access frequency, relevance, and decay
-- [ ] Create memory pruning for low-importance memories
-- [ ] Add pre-consolidation memory selection to minimize token usage
-- [ ] Implement consolidation history tracking in metadata
+- [ ] Add comprehensive environment variables to docker-compose.yml:
+  - HTTP Server configuration (3 variables)
+  - VectorDB configuration (8 variables)
+  - LLM configuration (7 variables)
+  - Memory configuration (5 variables)
+  - MCP configuration (8 variables)
+  - **Consolidation configuration (9 variables) - Currently missing entirely**
+- [ ] Organize variables by priority and maintain sensible defaults
+- [ ] Test configuration loading and validation with environment variables
 
-### 3. Memory Pipeline Infrastructure (30 minutes) - PENDING
+### 3. Runtime Integration Testing (20 minutes) - PENDING
 
-**3.1 Pipeline Architecture (15 minutes)**
+**3.1 Docker Stack Validation (10 minutes)**
 
-- [ ] Create `app/pipelines/` package with middleware infrastructure
-- [ ] Implement memory processing pipeline with configurable stages
-- [ ] Add background consolidation worker with event queue
-- [ ] Create pipeline middleware for validation, enrichment, and routing
+- [ ] Start complete Docker stack (Qdrant, Ollama, persistent-context)
+- [ ] Validate service connectivity and network communication
+- [ ] Test Docker health checks and startup dependencies
 
-**3.2 Service Integration (15 minutes)**
+**3.2 End-to-End Workflow Testing (10 minutes)**
 
-- [ ] Wire MCP server to memory store through service registry
-- [ ] Connect all services with proper dependency injection
-- [ ] Implement graceful shutdown with pipeline cleanup
-- [ ] Add comprehensive health checks across all services
+- [ ] Test memory capture → storage → consolidation workflow
+- [ ] Validate service health checks and graceful shutdown scenarios
+- [ ] Verify configuration loading and service initialization order
+- [ ] Test consolidation event triggering under realistic conditions
 
-### 4. Testing and Validation (30 minutes) - PENDING
+### 4. Documentation and Session Handoff (5 minutes) - PENDING
 
-**4.1 End-to-End Testing (20 minutes)**
+- [ ] Update execution-plan.md with Session 5 results and accomplishments
+- [ ] Document any issues discovered and next steps for Session 6
+- [ ] Update tasks.md with new priorities for future sessions
 
-- [ ] Build and run application with Docker Compose
-- [ ] Test memory capture through MCP server
-- [ ] Validate vector storage and retrieval
-- [ ] Test consolidation triggers and context safety
-- [ ] Verify service health checks and graceful shutdown
+## Technical Focus Areas
 
-**4.2 Performance and Cleanup (10 minutes)**
+### Current Architecture Status
 
-- [ ] Run basic performance tests with batch memory processing
-- [ ] Validate configuration loading and service initialization
-- [ ] Test error handling and recovery scenarios
-- [ ] Document any remaining issues or improvements
+From Session 4, the system has:
 
-### 5. Documentation Cleanup (10 minutes) - PENDING
+- Complete service orchestration with dependency injection
+- Event-driven consolidation engine with context window safety
+- Integrated memory processing middleware pipeline
+- Comprehensive configuration management system
 
-- [ ] Update execution-plan.md with Session 4 results and accomplishments
-- [ ] Update tasks.md with any new tasks or issues discovered
-- [ ] Note improvements and next steps for future sessions
-- [ ] Ensure clean handoff state with complete documentation
+### Critical Gaps to Address
 
-## Key Architectural Design
+1. **Missing Consolidation Service Integration**: Engine exists but not wired into service registry
+2. **Incomplete Docker Configuration**: Only 6 of 50+ config options exposed via environment variables
+3. **Build Path Issues**: Dockerfile references incorrect main.go path
 
-### Event-Driven Consolidation Architecture
+### Success Criteria
 
-```go
-// Consolidation events with context awareness
-type ConsolidationEvent struct {
-    Type             EventType
-    Trigger          string
-    Memories         []Memory
-    ContextState     ContextState
-    Timestamp        time.Time
-}
+- Consolidation service fully integrated and functional
+- Complete environment variable coverage for all configuration options
+- Successful Docker build and multi-service startup
+- End-to-end memory workflow validation with consolidation
+- Production-ready deployment ready for Session 6 enhancements
 
-type EventType int
-const (
-    ContextInit EventType = iota
-    NewContext
-    ThresholdReached
-    ConversationEnd
-)
-
-type ContextState struct {
-    WindowSize       int
-    CurrentUsage     int
-    EstimatedCost    int
-    CanProceed       bool
-}
-```
-
-### Service Architecture
-
-```go
-// Service orchestrator manages all services
-type Orchestrator struct {
-    registry    *lifecycle.Registry
-    config      *config.Config
-    services    map[string]services.Service
-}
-
-// Pipeline middleware for memory processing
-type Pipeline struct {
-    stages      []MiddlewareFunc
-    worker      *ConsolidationWorker
-    eventQueue  chan ConsolidationEvent
-}
-```
-
-### Memory Importance Scoring
-
-```go
-type MemoryScore struct {
-    AccessCount      int
-    LastAccessed     time.Time
-    SemanticRelevance float32
-    DecayFactor      float32
-    TotalScore       float32
-}
-
-func (c *ConsolidationEngine) scoreMemory(m *Memory) MemoryScore {
-    // Multi-factor scoring algorithm
-}
-```
-
-## Success Criteria
-
-- All components integrated and working together
-- Event-driven consolidation responding to LLM lifecycle events
-- Context window safety preventing consolidation overflow
-- Memory lifecycle managed based on importance scoring
-- System ready for continuous operation
-- All Session 3 blockers resolved
-- Complete documentation for handoff
-- Session management directive established
-
-## Session 4 Results
+## Session 5 Results
 
 ### Major Accomplishments
 
-1. **Complete Import Cycle Resolution**: Fixed all import issues from Session 3
-   - Updated main.go to use `internal/memory` instead of `internal/storage`
-   - Migrated all type definitions to `internal/types` package
-   - Fixed all vector database and memory store imports
+1. **Complete Consolidation Service Integration**: Successfully integrated consolidation engine as managed service
+   - Created `app/services/consolidation.go` with proper lifecycle management
+   - Integrated consolidation service into orchestrator service registry with correct dependencies
+   - Wired consolidation engine into memory service middleware pipeline
+   - Established clean cross-service dependency wiring pattern
 
-2. **Service Architecture Completion**: Implemented full service orchestration
-   - Created `app/orchestrator.go` with complete service lifecycle management
-   - Implemented dependency injection for all services
-   - Updated main.go to use service registry instead of manual initialization
-   - Fixed service configuration integration
+2. **Production-Ready Docker Environment**: Enhanced Docker configuration for reliable service orchestration
+   - Added comprehensive health checks for Qdrant, Ollama, and persistent-context services
+   - Implemented `depends_on` with `condition: service_healthy` for proper startup ordering
+   - Added complete environment variable coverage (50+ configuration options)
+   - Fixed Dockerfile build path to use standardized `bin/server` output
 
-3. **Event-Driven Consolidation System**: Implemented complete consolidation engine
-   - Created `internal/consolidation/engine.go` with event-driven handlers
-   - Implemented context window monitoring and safety checks
-   - Added memory importance scoring with access frequency and decay factors
-   - Created background consolidation worker with event queue
-   - All consolidation events implemented: OnContextInit, OnThresholdReached, OnConversationEnd
+3. **gRPC Configuration Resolution**: Solved TLS mismatch causing "http2: frame too large" errors
+   - Identified root cause as protocol mismatch, not frame size issue
+   - Added explicit `QDRANT__SERVICE__ENABLE_TLS=false` to Qdrant configuration
+   - Simplified gRPC address parsing to `host:port` format
+   - Maintained clean configuration-driven architecture without hardcoded values
 
-4. **Memory Pipeline Architecture**: Built and integrated flexible middleware infrastructure
-   - Created `app/middleware/` package with pipeline architecture
-   - Implemented middleware for validation, enrichment, logging, routing, and consolidation
-   - Separated concerns into individual files following config package pattern
-   - **Integrated middleware pipeline into memory service** with `ProcessMemory` method
-   - Removed unused `app/pipelines/` directory
-
-5. **Configuration System Enhancement**: Extended configuration architecture
-   - Added `internal/config/consolidation.go` for consolidation engine settings
-   - Integrated consolidation config into main configuration structure
-   - Fixed all configuration loading and validation
+4. **Enhanced Service Architecture**: Improved service lifecycle and dependency management
+   - Implemented formal cross-service wiring phase in orchestrator
+   - Added proper dependency injection for consolidation service
+   - Enhanced build standards with consistent `bin/server` output path
+   - Cleaned up configuration structure removing unnecessary complexity
 
 ### Current Status
 
 **Completed:**
-- All Session 3 blockers resolved
-- Service architecture and orchestration complete
-- Event-driven consolidation system implemented
-- Memory pipeline middleware architecture built and integrated
-- Configuration system enhanced
-- Application builds and compiles successfully
-- All import cycles resolved
-- Middleware properly integrated into services
+
+- Consolidation service fully integrated and wired
+- Docker health checks and service dependencies configured
+- gRPC TLS configuration properly aligned
+- Build system standardized with proper output paths
+- Environment variable configuration comprehensive
 
 **Architecture Achievements:**
-- Clean service-oriented architecture with proper dependency injection
-- Event-driven consolidation with context window safety
-- Integrated middleware pipeline for memory processing
-- Comprehensive configuration management
-- Production-ready service lifecycle management
+
+- Production-ready service orchestration with health-based startup ordering
+- Clean consolidation engine integration with event-driven memory processing
+- Simplified but robust gRPC configuration eliminating protocol mismatches
+- Maintainable configuration architecture with clear separation of concerns
 
 ### Next Session Priority
 
-1. **Consolidation Service Integration**: Create a consolidation service wrapper and integrate with orchestrator
-2. **Runtime Testing**: Test the complete system with actual Docker services
-3. **Performance Optimization**: Optimize memory processing and consolidation workflows
-4. **API Enhancements**: Add REST API endpoints for consolidation management
-5. **Documentation**: Create comprehensive API and architecture documentation
+Session 6 should focus on:
+
+1. **End-to-End Testing**: Complete runtime validation of memory workflow with consolidation
+2. **Performance Validation**: Test consolidation triggers and context window safety under load
+3. **API Enhancements**: Add REST endpoints for consolidation management and monitoring
+4. **Hierarchical Memory System**: Begin implementation of procedural memory from repeated patterns
 
 ### Issues and Blockers
 
-**Minor Issues Resolved:**
-- Fixed unused parameter warnings in orchestrator
-- Corrected configuration type mismatches in service constructors
-- Resolved import cycles between internal packages
-- Removed unused app/pipelines directory
-- Fixed middleware integration type issues
+**Resolved in Session 5:**
 
-**Known Limitations:**
-- Consolidation engine not yet integrated as a managed service
-- Docker network connectivity issues during testing session
-- Performance testing deferred due to Docker issues
+- RESOLVED: Service startup race conditions (fixed with health checks)
+- RESOLVED: gRPC "http2: frame too large" errors (TLS mismatch resolved)
+- RESOLVED: Consolidation engine integration (fully wired)
+- RESOLVED: Docker configuration gaps (comprehensive environment variables added)
 
-### Technical Achievements
+**Remaining Work:**
 
-The codebase now has a production-ready architecture with:
-- **Service Registry**: Complete lifecycle management with dependency resolution
-- **Event-Driven Consolidation**: Context-aware memory consolidation system
-- **Integrated Middleware Pipeline**: Memory processing pipeline integrated into memory service
-- **Configuration Management**: Comprehensive, validated configuration system
-- **Clean Architecture**: Proper separation of concerns and testable components
+- Runtime testing of complete system with Docker services
+- Validation of consolidation event triggering under realistic conditions
+- Performance optimization based on actual usage patterns
 
 ## Notes
 
-- Extended development session allows for complete feature implementation
-- Focus on event-driven consolidation rather than time-based cycles
-- Ensure consolidation never causes context window overflow
-- Design for extensibility to add more event types later
-- Keep implementation simple but robust
+- Focus on production readiness and complete system integration
+- Validate all components work together under realistic Docker conditions
+- Establish clean foundation for Session 6's hierarchical memory features
+- Ensure comprehensive configuration flexibility for deployment scenarios
