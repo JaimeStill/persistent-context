@@ -33,7 +33,7 @@ func (s *LLMService) Initialize(ctx context.Context) error {
 	llmConfig := &llm.Config{
 		Provider:           s.config.Provider,
 		URL:               s.config.URL,
-		APIKey:            s.config.APIKey,
+		APIKey:            "", // API key not needed for Ollama
 		EmbeddingModel:    s.config.EmbeddingModel,
 		ConsolidationModel: s.config.ConsolidationModel,
 		CacheEnabled:      s.config.CacheEnabled,

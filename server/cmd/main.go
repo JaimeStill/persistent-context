@@ -8,10 +8,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/JaimeStill/persistent-context/app"
 	"github.com/JaimeStill/persistent-context/internal/config"
-	httpserver "github.com/JaimeStill/persistent-context/internal/http"
-	"github.com/JaimeStill/persistent-context/internal/mcp"
-	"github.com/JaimeStill/persistent-context/internal/storage"
 	"github.com/JaimeStill/persistent-context/pkg/logger"
 )
 
@@ -26,49 +24,43 @@ func main() {
 	logger := logger.Setup(cfg)
 	logger.Info("Starting Persistent Context Server",
 		"version", "1.0.0",
-		"port", cfg.Server.Port,
-		"qdrant_url", cfg.Qdrant.URL,
-		"ollama_url", cfg.Ollama.URL,
+		"http_port", cfg.HTTP.Port,
+		"vectordb_url", cfg.VectorDB.URL,
+		"llm_url", cfg.LLM.URL,
 	)
 	
-	// Create memory store
-	memoryStore := storage.NewMemoryStore()
+	// Create application orchestrator
+	orchestrator := app.NewOrchestrator(cfg, logger)
 	
-	// Create MCP server
-	mcpServer := mcp.NewServer(cfg.MCP.Name, cfg.MCP.Version, memoryStore)
-	
-	// Create HTTP server dependencies
-	deps := &httpserver.Dependencies{
-		QdrantHealth: memoryStore, // Memory store implements HealthChecker
-		OllamaHealth: nil,         // TODO: Implement Ollama health checker in Session 2
-	}
-	
-	// Create HTTP server
-	httpServer := httpserver.NewServer(cfg, deps)
-	
-	// Start servers
+	// Application lifecycle
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	
-	// Start HTTP server
-	go func() {
-		logger.Info("Starting HTTP server", "port", cfg.Server.Port)
-		if err := httpServer.Start(); err != nil {
-			logger.Error("HTTP server failed", "error", err)
-			cancel()
-		}
-	}()
+	// Register all services
+	if err := orchestrator.RegisterServices(ctx); err != nil {
+		logger.Error("Failed to register services", "error", err)
+		os.Exit(1)
+	}
 	
-	// Start MCP server if enabled
-	if cfg.MCP.Enabled {
-		go func() {
-			logger.Info("Starting MCP server", "name", cfg.MCP.Name, "version", cfg.MCP.Version)
-			if err := mcpServer.ServeStdio(ctx); err != nil {
-				logger.Error("MCP server failed", "error", err)
-			}
-		}()
+	// Initialize all services
+	if err := orchestrator.Initialize(ctx); err != nil {
+		logger.Error("Failed to initialize services", "error", err)
+		os.Exit(1)
+	}
+	
+	// Start all services
+	if err := orchestrator.Start(ctx); err != nil {
+		logger.Error("Failed to start services", "error", err)
+		os.Exit(1)
+	}
+	
+	logger.Info("All services started successfully")
+	
+	// Perform initial health check
+	if err := orchestrator.HealthCheck(ctx); err != nil {
+		logger.Warn("Initial health check failed", "error", err)
 	} else {
-		logger.Info("MCP server disabled (set APP_MCP_ENABLED=true to enable)")
+		logger.Info("All services are healthy")
 	}
 	
 	// Wait for interrupt signal
@@ -83,14 +75,14 @@ func main() {
 	}
 	
 	// Graceful shutdown
-	logger.Info("Shutting down servers...")
+	logger.Info("Shutting down all services...")
 	
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 
-		time.Duration(cfg.Server.ShutdownTimeout)*time.Second)
+		time.Duration(cfg.HTTP.ShutdownTimeout)*time.Second)
 	defer shutdownCancel()
 	
-	if err := httpServer.Shutdown(shutdownCtx); err != nil {
-		logger.Error("HTTP server shutdown error", "error", err)
+	if err := orchestrator.Stop(shutdownCtx); err != nil {
+		logger.Error("Error during shutdown", "error", err)
 	}
 	
 	logger.Info("Server stopped")

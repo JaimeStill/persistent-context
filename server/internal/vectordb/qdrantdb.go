@@ -9,14 +9,14 @@ import (
 	"time"
 
 	"github.com/qdrant/go-client/qdrant"
-	"github.com/JaimeStill/persistent-context/internal/memory"
+	"github.com/JaimeStill/persistent-context/internal/types"
 )
 
 // QdrantDB implements vector database operations using Qdrant
 type QdrantDB struct {
 	client      *qdrant.Client
 	config      *Config
-	collections map[memory.MemoryType]string
+	collections map[types.MemoryType]string
 }
 
 // NewQdrantDB creates a new Qdrant database implementation
@@ -32,12 +32,12 @@ func NewQdrantDB(config *Config) (*QdrantDB, error) {
 	qc := &QdrantDB{
 		client:      client,
 		config:      config,
-		collections: make(map[memory.MemoryType]string),
+		collections: make(map[types.MemoryType]string),
 	}
 
 	// Map memory types to collection names
 	for memType, collectionName := range config.CollectionNames {
-		qc.collections[memory.MemoryType(memType)] = collectionName
+		qc.collections[types.MemoryType(memType)] = collectionName
 	}
 
 	return qc, nil
@@ -63,7 +63,7 @@ func (qc *QdrantDB) Initialize(ctx context.Context) error {
 }
 
 // Store stores a memory entry in the appropriate collection
-func (qc *QdrantDB) Store(ctx context.Context, entry *memory.MemoryEntry) error {
+func (qc *QdrantDB) Store(ctx context.Context, entry *types.MemoryEntry) error {
 	collectionName, exists := qc.collections[entry.Type]
 	if !exists {
 		return fmt.Errorf("no collection configured for memory type: %s", entry.Type)
@@ -110,7 +110,7 @@ func (qc *QdrantDB) Store(ctx context.Context, entry *memory.MemoryEntry) error 
 }
 
 // Query performs a vector similarity search
-func (qc *QdrantDB) Query(ctx context.Context, memType memory.MemoryType, vector []float32, limit uint64) ([]*memory.MemoryEntry, error) {
+func (qc *QdrantDB) Query(ctx context.Context, memType types.MemoryType, vector []float32, limit uint64) ([]*types.MemoryEntry, error) {
 	collectionName, exists := qc.collections[memType]
 	if !exists {
 		return nil, fmt.Errorf("no collection configured for memory type: %s", memType)
@@ -126,7 +126,7 @@ func (qc *QdrantDB) Query(ctx context.Context, memType memory.MemoryType, vector
 		return nil, fmt.Errorf("failed to search collection %s: %w", collectionName, err)
 	}
 
-	entries := make([]*memory.MemoryEntry, 0, len(response))
+	entries := make([]*types.MemoryEntry, 0, len(response))
 	for _, scoredPoint := range response {
 		entry, err := qc.scoredPointToMemoryEntry(scoredPoint)
 		if err != nil {
@@ -140,7 +140,7 @@ func (qc *QdrantDB) Query(ctx context.Context, memType memory.MemoryType, vector
 }
 
 // Retrieve gets a specific memory entry by ID
-func (qc *QdrantDB) Retrieve(ctx context.Context, memType memory.MemoryType, id string) (*memory.MemoryEntry, error) {
+func (qc *QdrantDB) Retrieve(ctx context.Context, memType types.MemoryType, id string) (*types.MemoryEntry, error) {
 	collectionName, exists := qc.collections[memType]
 	if !exists {
 		return nil, fmt.Errorf("no collection configured for memory type: %s", memType)
@@ -202,8 +202,8 @@ func (qc *QdrantDB) createCollection(ctx context.Context, name string) error {
 }
 
 // retrievedPointToMemoryEntry converts a Qdrant RetrievedPoint to a memory entry
-func (qc *QdrantDB) retrievedPointToMemoryEntry(point *qdrant.RetrievedPoint) (*memory.MemoryEntry, error) {
-	entry := &memory.MemoryEntry{
+func (qc *QdrantDB) retrievedPointToMemoryEntry(point *qdrant.RetrievedPoint) (*types.MemoryEntry, error) {
+	entry := &types.MemoryEntry{
 		ID:       point.Id.GetUuid(),
 		Metadata: make(map[string]any),
 	}
@@ -221,7 +221,7 @@ func (qc *QdrantDB) retrievedPointToMemoryEntry(point *qdrant.RetrievedPoint) (*
 			entry.Content = content.GetStringValue()
 		}
 		if memType := payload["type"]; memType != nil {
-			entry.Type = memory.MemoryType(memType.GetStringValue())
+			entry.Type = types.MemoryType(memType.GetStringValue())
 		}
 		if createdAt := payload["created_at"]; createdAt != nil {
 			if t, err := time.Parse(time.RFC3339, createdAt.GetStringValue()); err == nil {
@@ -259,8 +259,8 @@ func (qc *QdrantDB) retrievedPointToMemoryEntry(point *qdrant.RetrievedPoint) (*
 }
 
 // scoredPointToMemoryEntry converts a Qdrant ScoredPoint to a memory entry
-func (qc *QdrantDB) scoredPointToMemoryEntry(scoredPoint *qdrant.ScoredPoint) (*memory.MemoryEntry, error) {
-	entry := &memory.MemoryEntry{
+func (qc *QdrantDB) scoredPointToMemoryEntry(scoredPoint *qdrant.ScoredPoint) (*types.MemoryEntry, error) {
+	entry := &types.MemoryEntry{
 		ID:       scoredPoint.Id.GetUuid(),
 		Metadata: make(map[string]any),
 	}
@@ -278,7 +278,7 @@ func (qc *QdrantDB) scoredPointToMemoryEntry(scoredPoint *qdrant.ScoredPoint) (*
 			entry.Content = content.GetStringValue()
 		}
 		if memType := payload["type"]; memType != nil {
-			entry.Type = memory.MemoryType(memType.GetStringValue())
+			entry.Type = types.MemoryType(memType.GetStringValue())
 		}
 		if createdAt := payload["created_at"]; createdAt != nil {
 			if t, err := time.Parse(time.RFC3339, createdAt.GetStringValue()); err == nil {

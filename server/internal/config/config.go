@@ -16,13 +16,14 @@ type Configurable interface {
 
 // Config holds all application configuration
 type Config struct {
-	HTTP     HTTPConfig     `mapstructure:"server"`
-	Logging  LoggingConfig  `mapstructure:"logging"`
-	VectorDB VectorDBConfig `mapstructure:"vectordb"`
-	LLM      LLMConfig      `mapstructure:"llm"`
-	Memory   MemoryConfig   `mapstructure:"memory"`
-	MCP      MCPConfig      `mapstructure:"mcp"`
-	Storage  StorageConfig  `mapstructure:"storage"`
+	HTTP          HTTPConfig          `mapstructure:"server"`
+	Logging       LoggingConfig       `mapstructure:"logging"`
+	VectorDB      VectorDBConfig      `mapstructure:"vectordb"`
+	LLM           LLMConfig           `mapstructure:"llm"`
+	Memory        MemoryConfig        `mapstructure:"memory"`
+	MCP           MCPConfig           `mapstructure:"mcp"`
+	Storage       StorageConfig       `mapstructure:"storage"`
+	Consolidation ConsolidationConfig `mapstructure:"consolidation"`
 }
 
 // Load loads configuration from environment variables and config files
@@ -73,6 +74,7 @@ func (c *Config) loadPackageConfigs(v *viper.Viper) error {
 		&c.Memory,
 		&c.MCP,
 		&c.Storage,
+		&c.Consolidation,
 	}
 	
 	for _, configurable := range configurables {
@@ -95,6 +97,7 @@ func setDefaults(v *viper.Viper) {
 		&MemoryConfig{},
 		&MCPConfig{},
 		&StorageConfig{},
+		&ConsolidationConfig{},
 	}
 	
 	for _, configurable := range configurables {
@@ -116,6 +119,7 @@ func (c *Config) Validate() error {
 		&c.Memory,
 		&c.MCP,
 		&c.Storage,
+		&c.Consolidation,
 	}
 	
 	for _, configurable := range configurables {

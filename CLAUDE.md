@@ -37,10 +37,26 @@ The only restriction within this repository is that any folder prefixed with a `
 
 ### Session Management and Handoff Process
 
-- **Documentation First**: At the start of each session, archive the previous execution plan to `_context/sessions/session-XXX.md` and create a new execution plan for the current session
-- **Continuous Updates**: Update execution-plan.md continuously during development, marking tasks as completed with relevant implementation details
-- **Living Document**: The execution plan serves as both a progress tracker and a comprehensive handoff document for the next session
-- **Clear Handoff**: Each session should end with a complete execution plan showing what was accomplished, any blockers, and next steps
+Every development session MUST follow this exact structure:
+
+**Part 0: Documentation Setup (First Task of Every Session)**
+- Archive current execution-plan.md to `_context/sessions/session-XXX.md`
+- Create new execution-plan.md with current session agenda and progress tracking
+- Update CLAUDE.md with any new directives or improvements
+
+**During Session: Continuous Updates**
+- Update execution-plan.md continuously during development
+- Mark tasks as completed with relevant implementation details
+- Document any blockers or issues discovered
+- The execution plan serves as both progress tracker and handoff document
+
+**Part N: Documentation Cleanup (Final Task of Every Session)**
+- Update execution-plan.md with session results and accomplishments
+- Update tasks.md with any new tasks or issues discovered
+- Note improvements and next steps for future sessions
+- Ensure clean handoff state with complete documentation
+
+This documentation flow is MANDATORY for every session and takes precedence over all other tasks.
 
 ### Configuration Management
 
@@ -49,33 +65,3 @@ The only restriction within this repository is that any folder prefixed with a `
 - **Documentation**: Document all configuration options in code comments and execution plans
 - **Flexibility**: Design components to be runtime-configurable rather than compile-time where possible
 - **Nested Structure**: Use nested configuration structures to organize related settings logically
-
-## Projected Repository Structure
-
-As the project scales, the repository structure should evolve to:
-
-```
-persistent-context/
-├── server/                 # Core Go server for memory consolidation
-│   ├── cmd/               # Main applications
-│   ├── internal/          # Private application code
-│   └── pkg/               # Public libraries
-├── client/                # Future: Web/CLI interface for memory analysis
-├── mcp/                   # MCP server implementations
-│   ├── file-watcher/
-│   ├── git-monitor/
-│   └── api-monitor/
-├── tools/                 # Utility scripts and tools
-│   ├── persona-export/
-│   └── memory-analyzer/
-├── docker/                # Docker configurations
-│   └── docker-compose.yml
-├── personas/              # Storage for exported personas
-├── docs/                  # Project documentation
-├── _context/              # Read-only context artifacts
-├── claude.md
-├── tasks.md
-└── execution-plan.md
-```
-
-Create directories only as needed. Currently focusing on `server/` for MVP.
