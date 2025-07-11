@@ -15,7 +15,7 @@ services:
       - QDRANT__SERVICE__ENABLE_TLS=false
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -45,7 +45,7 @@ services:
                     (ollama list | grep phi3:mini || ollama pull phi3:mini) &&
                     wait"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      test: ["CMD", "ollama", "list"]
       interval: 5s
       timeout: 3s
       retries: 5

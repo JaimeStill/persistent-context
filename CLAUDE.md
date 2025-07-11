@@ -28,6 +28,7 @@ The only restriction within this repository is that any folder prefixed with a `
 - Use `any` instead of `interface{}` in Go code for better readability
 - Organize Docker volumes under a consistent root (e.g., `./data/`) for cleaner structure
 - Implement proper separation of concerns with dedicated packages for each functionality
+- When removing code/functions, do not leave orphaned comments - comments should only exist when attached to actual code
 
 ### Build Standards
 
@@ -45,11 +46,18 @@ The only restriction within this repository is that any folder prefixed with a `
 
 Every development session MUST follow this exact structure:
 
-**Part 0: Documentation Setup (First Task of Every Session)**
+**Session End Process (Final Task of Every Session)**
 
-- Archive current execution-plan.md to `_context/sessions/session-XXX.md`
-- Create new execution-plan.md with current session agenda and progress tracking
-- Update CLAUDE.md with any new directives or improvements
+1. **Complete Execution Plan**: Update execution-plan.md with final session results and handoff details
+2. **Archive Session**: Move execution-plan.md to `_context/sessions/session-XXX.md`
+3. **Update Roadmap**: Update tasks.md with session accomplishments and adjusted future priorities
+4. **Update Directives**: Update CLAUDE.md with any new directives or lessons learned
+
+**Session Start Process (First Task of Every Session)**
+
+1. **Review Context**: Read latest `_context/sessions/session-XXX.md` for handoff, `_context/` for full project details, and `tasks.md` for current roadmap
+2. **Plan Session**: Use plan mode to brainstorm and validate session scope and goals
+3. **Write Execution Plan**: Create new execution-plan.md for current session and begin work
 
 **During Session: Continuous Updates**
 
@@ -57,13 +65,6 @@ Every development session MUST follow this exact structure:
 - Mark tasks as completed with relevant implementation details
 - Document any blockers or issues discovered
 - The execution plan serves as both progress tracker and handoff document
-
-**Part N: Documentation Cleanup (Final Task of Every Session)**
-
-- Update execution-plan.md with session results and accomplishments
-- Update tasks.md with any new tasks or issues discovered
-- Note improvements and next steps for future sessions
-- Ensure clean handoff state with complete documentation
 
 This documentation flow is MANDATORY for every session and takes precedence over all other tasks.
 
