@@ -55,7 +55,7 @@ func (c *VectorDBConfig) GetDefaults() map[string]any {
 		"vectordb.provider":         "qdrant",
 		"vectordb.url":              "qdrant:6334",
 		"vectordb.insecure":         true,
-		"vectordb.vector_dimension": 1536,
+		"vectordb.vector_dimension": 3072,
 		"vectordb.on_disk_payload":  true,
 		"vectordb.timeout":          "30s",
 		"vectordb.collection_names": map[string]string{

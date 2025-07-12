@@ -92,6 +92,7 @@ func (a *Application) initializeComponents() error {
 	httpDeps := &httpserver.Dependencies{
 		VectorDBHealth: &healthChecker{name: "vectordb", checker: a.vectorDB},
 		LLMHealth:      &healthChecker{name: "llm", checker: a.llmClient},
+		Journal:        a.journal,
 	}
 	a.httpServer = httpserver.NewServer(&a.config.HTTP, httpDeps)
 

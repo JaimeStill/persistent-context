@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/JaimeStill/persistent-context/internal/config"
 	"github.com/JaimeStill/persistent-context/internal/llm"
 	"github.com/JaimeStill/persistent-context/internal/vectordb"
@@ -31,19 +32,19 @@ func NewVectorJournal(deps *Dependencies) *VectorJournal {
 }
 
 // CaptureContext implements the MCP interface for capturing context
-func (vj *VectorJournal) CaptureContext(ctx context.Context, source string, content string, metadata map[string]any) error {
+func (vj *VectorJournal) CaptureContext(ctx context.Context, source string, content string, metadata map[string]any) (*types.MemoryEntry, error) {
 	vj.counter++
 	
 	// Generate embedding for the content
 	embedding, err := vj.llmClient.GenerateEmbedding(ctx, content)
 	if err != nil {
 		slog.Error("Failed to generate embedding", "error", err, "source", source)
-		return fmt.Errorf("failed to generate embedding: %w", err)
+		return nil, fmt.Errorf("failed to generate embedding: %w", err)
 	}
 
 	// Create memory entry
 	entry := &types.MemoryEntry{
-		ID:         fmt.Sprintf("mem_%d_%d", time.Now().Unix(), vj.counter),
+		ID:         uuid.New().String(),
 		Type:       types.TypeEpisodic,
 		Content:    content,
 		Embedding:  embedding,
@@ -63,7 +64,7 @@ func (vj *VectorJournal) CaptureContext(ctx context.Context, source string, cont
 	// Store in vector database
 	if err := vj.vectorDB.Store(ctx, entry); err != nil {
 		slog.Error("Failed to store memory in vector database", "error", err, "id", entry.ID)
-		return fmt.Errorf("failed to store memory: %w", err)
+		return nil, fmt.Errorf("failed to store memory: %w", err)
 	}
 	
 	slog.Info("Memory captured and stored",
@@ -72,7 +73,7 @@ func (vj *VectorJournal) CaptureContext(ctx context.Context, source string, cont
 		"content_length", len(content),
 		"embedding_dim", len(embedding))
 	
-	return nil
+	return entry, nil
 }
 
 // GetMemories retrieves recent memories from episodic storage
@@ -178,9 +179,8 @@ func (vj *VectorJournal) ConsolidateMemories(ctx context.Context, memories []*ty
 	}
 
 	// Create semantic memory entry
-	vj.counter++
 	semanticEntry := &types.MemoryEntry{
-		ID:        fmt.Sprintf("semantic_%d_%d", time.Now().Unix(), vj.counter),
+		ID:        uuid.New().String(),
 		Type:      types.TypeSemantic,
 		Content:   consolidatedContent,
 		Embedding: embedding,

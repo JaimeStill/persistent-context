@@ -92,7 +92,7 @@ func (s *Server) registerCaptureContextTool() {
 			metadata = make(map[string]any)
 		}
 		
-		err := s.journal.CaptureContext(ctx, source, content, metadata)
+		entry, err := s.journal.CaptureContext(ctx, source, content, metadata)
 		if err != nil {
 			return nil, fmt.Errorf("failed to capture context: %w", err)
 		}
@@ -100,6 +100,7 @@ func (s *Server) registerCaptureContextTool() {
 		return map[string]any{
 			"success": true,
 			"message": "Context captured successfully",
+			"id":      entry.ID,
 		}, nil
 	}
 	

@@ -12,7 +12,7 @@ import (
 // Journal defines the interface for LLM memory journal storage and retrieval operations
 type Journal interface {
 	// CaptureContext captures and stores a new memory from context
-	CaptureContext(ctx context.Context, source string, content string, metadata map[string]any) error
+	CaptureContext(ctx context.Context, source string, content string, metadata map[string]any) (*types.MemoryEntry, error)
 	
 	// GetMemories retrieves memories with pagination
 	GetMemories(ctx context.Context, limit uint64) ([]*types.MemoryEntry, error)

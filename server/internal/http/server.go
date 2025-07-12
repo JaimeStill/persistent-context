@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/JaimeStill/persistent-context/internal/config"
+	"github.com/JaimeStill/persistent-context/internal/journal"
+	"github.com/JaimeStill/persistent-context/internal/types"
 	"github.com/gin-gonic/gin"
 )
 
@@ -15,6 +17,7 @@ type Server struct {
 	server *http.Server
 	config *config.HTTPConfig
 	engine *gin.Engine
+	deps   *Dependencies
 }
 
 // HealthChecker interface for checking service health
@@ -26,6 +29,7 @@ type HealthChecker interface {
 type Dependencies struct {
 	VectorDBHealth HealthChecker
 	LLMHealth      HealthChecker
+	Journal        journal.Journal
 }
 
 // NewServer creates a new HTTP server using Gin
@@ -42,6 +46,7 @@ func NewServer(cfg *config.HTTPConfig, deps *Dependencies) *Server {
 	s := &Server{
 		config: cfg,
 		engine: engine,
+		deps:   deps,
 		server: &http.Server{
 			Addr:         fmt.Sprintf(":%s", cfg.Port),
 			Handler:      engine,
@@ -51,26 +56,30 @@ func NewServer(cfg *config.HTTPConfig, deps *Dependencies) *Server {
 	}
 
 	// Register routes
-	s.registerRoutes(deps)
+	s.registerRoutes()
 
 	return s
 }
 
 // registerRoutes sets up HTTP routes
-func (s *Server) registerRoutes(deps *Dependencies) {
+func (s *Server) registerRoutes() {
 	// Health and monitoring endpoints
 	s.engine.GET("/health", s.handleHealth)
-	s.engine.GET("/ready", s.handleReady(deps))
+	s.engine.GET("/ready", s.handleReady)
 	s.engine.GET("/metrics", s.handleMetrics)
 
-	// API routes group (for future expansion)
+	// API routes group  
 	api := s.engine.Group("/api/v1")
 	{
-		// Memory endpoints (placeholders for Session 2)
-		api.GET("/memories", s.handleGetMemories)
-		api.POST("/memories", s.handleCreateMemory)
+		// Journal endpoints
+		api.POST("/journal", s.handleCaptureMemory)
+		api.GET("/journal", s.handleGetMemories)
+		api.GET("/journal/:id", s.handleGetMemoryByID)
+		api.POST("/journal/search", s.handleSearchMemories)
+		api.POST("/journal/consolidate", s.handleConsolidateMemories)
+		api.GET("/journal/stats", s.handleGetMemoryStats)
 
-		// Persona endpoints (placeholders for Session 3)
+		// Persona endpoints (placeholders for Session 9)
 		api.GET("/personas", s.handleGetPersonas)
 		api.POST("/personas/export", s.handleExportPersona)
 	}
@@ -86,8 +95,7 @@ func (s *Server) handleHealth(c *gin.Context) {
 }
 
 // handleReady checks if the service is ready with all dependencies
-func (s *Server) handleReady(deps *Dependencies) gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (s *Server) handleReady(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 		defer cancel()
 
@@ -95,16 +103,16 @@ func (s *Server) handleReady(deps *Dependencies) gin.HandlerFunc {
 		vectordbStatus := "healthy"
 		llmStatus := "healthy"
 
-		if deps.VectorDBHealth != nil {
-			if err := deps.VectorDBHealth.HealthCheck(ctx); err != nil {
+		if s.deps.VectorDBHealth != nil {
+			if err := s.deps.VectorDBHealth.HealthCheck(ctx); err != nil {
 				vectordbStatus = "unhealthy"
 			}
 		} else {
 			vectordbStatus = "unknown"
 		}
 
-		if deps.LLMHealth != nil {
-			if err := deps.LLMHealth.HealthCheck(ctx); err != nil {
+		if s.deps.LLMHealth != nil {
+			if err := s.deps.LLMHealth.HealthCheck(ctx); err != nil {
 				llmStatus = "unhealthy"
 			}
 		} else {
@@ -127,7 +135,6 @@ func (s *Server) handleReady(deps *Dependencies) gin.HandlerFunc {
 			},
 			"timestamp": time.Now().UTC().Format(time.RFC3339),
 		})
-	}
 }
 
 // handleMetrics returns basic metrics (placeholder for now)
@@ -142,16 +149,184 @@ func (s *Server) handleMetrics(c *gin.Context) {
 	})
 }
 
-// Placeholder handlers for future sessions
+// Journal endpoint handlers
+
+// handleCaptureMemory handles POST /api/v1/journal
+func (s *Server) handleCaptureMemory(c *gin.Context) {
+		var req CaptureMemoryRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, ErrorResponse{
+				Error:   "invalid_request",
+				Message: err.Error(),
+			})
+			return
+		}
+
+		ctx := c.Request.Context()
+		entry, err := s.deps.Journal.CaptureContext(ctx, req.Source, req.Content, req.Metadata)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, ErrorResponse{
+				Error:   "capture_failed",
+				Message: err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusCreated, CaptureMemoryResponse{
+			ID:      entry.ID,
+			Message: "Memory captured successfully",
+		})
+}
+
+// handleGetMemories handles GET /api/v1/journal
 func (s *Server) handleGetMemories(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"message": "Memory retrieval endpoint - to be implemented in Session 2",
+		var req GetMemoriesRequest
+		if err := c.ShouldBindQuery(&req); err != nil {
+			c.JSON(http.StatusBadRequest, ErrorResponse{
+				Error:   "invalid_request",
+				Message: err.Error(),
+			})
+			return
+		}
+
+	ctx := c.Request.Context()
+	memories, err := s.deps.Journal.GetMemories(ctx, req.Limit)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, ErrorResponse{
+				Error:   "retrieval_failed",
+				Message: err.Error(),
+			})
+			return
+		}
+
+	c.JSON(http.StatusOK, GetMemoriesResponse{
+		Memories: memories,
+		Count:    len(memories),
+		Limit:    req.Limit,
 	})
 }
 
-func (s *Server) handleCreateMemory(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"message": "Memory creation endpoint - to be implemented in Session 2",
+// handleGetMemoryByID handles GET /api/v1/journal/:id
+func (s *Server) handleGetMemoryByID(c *gin.Context) {
+		id := c.Param("id")
+		if id == "" {
+			c.JSON(http.StatusBadRequest, ErrorResponse{
+				Error:   "invalid_request",
+				Message: "Memory ID is required",
+			})
+			return
+		}
+
+	ctx := c.Request.Context()
+	memory, err := s.deps.Journal.GetMemoryByID(ctx, id)
+		if err != nil {
+			c.JSON(http.StatusNotFound, ErrorResponse{
+				Error:   "memory_not_found",
+				Message: err.Error(),
+			})
+			return
+		}
+
+	c.JSON(http.StatusOK, memory)
+}
+
+// handleSearchMemories handles POST /api/v1/journal/search
+func (s *Server) handleSearchMemories(c *gin.Context) {
+		var req SearchMemoriesRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, ErrorResponse{
+				Error:   "invalid_request",
+				Message: err.Error(),
+			})
+			return
+		}
+
+		// Default to episodic memory type if not specified
+		memType := types.TypeEpisodic
+		if req.MemoryType != "" {
+			memType = types.MemoryType(req.MemoryType)
+		}
+
+		// Default limit if not specified
+		if req.Limit == 0 {
+			req.Limit = 10
+		}
+
+	ctx := c.Request.Context()
+	memories, err := s.deps.Journal.QuerySimilarMemories(ctx, req.Content, memType, req.Limit)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, ErrorResponse{
+				Error:   "search_failed",
+				Message: err.Error(),
+			})
+			return
+		}
+
+	c.JSON(http.StatusOK, SearchMemoriesResponse{
+		Memories: memories,
+		Query:    req.Content,
+		Count:    len(memories),
+		Limit:    req.Limit,
+	})
+}
+
+// handleConsolidateMemories handles POST /api/v1/journal/consolidate
+func (s *Server) handleConsolidateMemories(c *gin.Context) {
+		var req ConsolidateRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, ErrorResponse{
+				Error:   "invalid_request",
+				Message: err.Error(),
+			})
+			return
+		}
+
+		ctx := c.Request.Context()
+		
+	// Retrieve memories by IDs
+	var memories []*types.MemoryEntry
+	for _, id := range req.MemoryIDs {
+		memory, err := s.deps.Journal.GetMemoryByID(ctx, id)
+			if err != nil {
+				c.JSON(http.StatusNotFound, ErrorResponse{
+					Error:   "memory_not_found",
+					Message: fmt.Sprintf("Memory with ID %s not found: %v", id, err),
+				})
+				return
+			}
+			memories = append(memories, memory)
+		}
+
+	// Consolidate memories
+	err := s.deps.Journal.ConsolidateMemories(ctx, memories)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, ErrorResponse{
+				Error:   "consolidation_failed",
+				Message: err.Error(),
+			})
+			return
+		}
+
+	c.JSON(http.StatusOK, ConsolidateResponse{
+		Message:        "Memories consolidated successfully",
+		ProcessedCount: len(memories),
+	})
+}
+
+// handleGetMemoryStats handles GET /api/v1/journal/stats
+func (s *Server) handleGetMemoryStats(c *gin.Context) {
+	ctx := c.Request.Context()
+	stats, err := s.deps.Journal.GetMemoryStats(ctx)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, ErrorResponse{
+				Error:   "stats_failed",
+				Message: err.Error(),
+			})
+			return
+		}
+
+	c.JSON(http.StatusOK, StatsResponse{
+		Stats: stats,
 	})
 }
 
