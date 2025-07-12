@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "persistent-context": {
+      "command": "./server/bin/mcp",
+      "args": [
+        "--stdio"
+      ],
+      "env": {
+        "PROJECT_ROOT": "../"
+      }
+    }
+  }
+}
