@@ -30,6 +30,8 @@
 - Organize Docker volumes under a consistent root (e.g., `./data/`) for cleaner structure
 - Implement proper separation of concerns with dedicated packages for each functionality
 - When removing code/functions, do not leave orphaned comments - comments should only exist when attached to actual code
+- **Avoid `goto` statements**: Use early returns, extracted functions, and clear boolean logic instead of `goto` for better maintainability
+- **Use typed string enums**: Replace magic strings with typed string constants for distinct sets of possible values (e.g., event types, states, modes) to prevent errors and improve maintainability
 
 ### Build Standards
 
@@ -43,6 +45,13 @@
 - Maintain clear documentation of progress and decisions
 - Update this file with new directives as they are established
 
+### Testing and Validation
+
+- **Validate Before Moving Forward**: Always test and validate each focus area before moving to the next separate focus area
+- **Minimize Test Maintenance**: Keep testing infrastructure as lightweight as possible to reduce maintenance overhead
+- **Prefer Integration Testing**: When possible, test by running actual code rather than creating formal test suites or mocks
+- **Iterative Validation**: Test that what was built actually works before building on top of it to prevent compound issues
+
 ### Session Management and Handoff Process
 
 Every development session MUST follow this exact structure:
@@ -54,6 +63,7 @@ Every development session MUST follow this exact structure:
 3. **Clean Up**: Remove execution-plan.md after successful archiving
 4. **Update Roadmap**: Update tasks.md with session accomplishments and adjusted future priorities
 5. **Update Directives**: Update CLAUDE.md with any new directives or lessons learned
+6. **Reflective Process**: Following session closeout, engage in abstract reflection about the larger purpose, philosophical implications, and evolutionary context of the work, documenting results in `.artifacts/reflections/reflection-XXX.md`
 
 **Session Start Process (First Task of Every Session)**
 
@@ -77,3 +87,9 @@ This documentation flow is MANDATORY for every session and takes precedence over
 - **Documentation**: Document all configuration options in code comments and execution plans
 - **Flexibility**: Design components to be runtime-configurable rather than compile-time where possible
 - **Nested Structure**: Use nested configuration structures to organize related settings logically
+
+### Documentation Structure
+
+- **Context Documents**: Outside of core files (execution-plan.md, tasks.md, CLAUDE.md, README.md), all contextual and design documents should be stored in the `_context/` directory
+- **Design Documents**: Architecture decisions, design plans, and technical specifications belong in `_context/`
+- **Session Archives**: Completed execution plans are archived to `_context/sessions/`

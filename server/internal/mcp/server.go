@@ -6,8 +6,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
+	"github.com/JaimeStill/persistent-context/internal/config"
 	"github.com/JaimeStill/persistent-context/internal/journal"
+	"github.com/JaimeStill/persistent-context/internal/logger"
+	"github.com/JaimeStill/persistent-context/internal/types"
 )
 
 // Server represents an MCP server instance
@@ -16,7 +20,11 @@ type Server struct {
 	version     string
 	tools       map[string]*Tool
 	handlers    map[string]ToolHandler
-	journal journal.Journal
+	journal     journal.Journal
+	pipeline    *ProcessingPipeline
+	filter      *FilterEngine
+	config      config.MCPConfig
+	logger      *logger.Logger
 }
 
 // ToolHandler is a function that handles tool invocations
@@ -37,46 +45,81 @@ type Parameter struct {
 }
 
 // NewServer creates a new MCP server
-func NewServer(name, version string, journal journal.Journal) *Server {
-	s := &Server{
-		name:        name,
-		version:     version,
-		tools:       make(map[string]*Tool),
-		handlers:    make(map[string]ToolHandler),
-		journal: journal,
+func NewServer(cfg config.MCPConfig, journal journal.Journal, log *logger.Logger) *Server {
+	// Get active profile
+	profile := cfg.Profiles[cfg.CaptureMode]
+	if profile == nil {
+		log.Warn("Profile not found, using balanced default", "profile", cfg.CaptureMode)
+		profile = cfg.Profiles["balanced"]
 	}
 	
-	// Register default capture_context tool
-	s.registerCaptureContextTool()
+	// Create filter engine
+	filter := NewFilterEngine(cfg.FilterRules, profile)
+	
+	// Create processing pipeline
+	pipeline := NewProcessingPipeline(cfg, filter, log)
+	
+	s := &Server{
+		name:     cfg.Name,
+		version:  cfg.Version,
+		tools:    make(map[string]*Tool),
+		handlers: make(map[string]ToolHandler),
+		journal:  journal,
+		pipeline: pipeline,
+		filter:   filter,
+		config:   cfg,
+		logger:   log,
+	}
+	
+	// Register enhanced tools
+	s.registerTools()
 	
 	return s
 }
 
-// registerCaptureContextTool adds the context capture tool
-func (s *Server) registerCaptureContextTool() {
+// registerTools registers all MCP tools
+func (s *Server) registerTools() {
+	s.registerCaptureEventTool()
+	s.registerGetStatsTool()
+	s.registerQueryMemoryTool()
+	s.registerTriggerConsolidationTool()
+}
+
+// registerCaptureEventTool adds the enhanced event capture tool
+func (s *Server) registerCaptureEventTool() {
 	tool := &Tool{
-		Name:        "capture_context",
-		Description: "Capture context from the environment for memory consolidation",
+		Name:        "capture_event",
+		Description: "Capture an event through the intelligent filtering and processing pipeline",
 		Parameters: map[string]Parameter{
+			"type": {
+				Type:        "string",
+				Description: "Event type (file_read, file_write, command_output, search_results, etc.)",
+				Required:    true,
+			},
 			"source": {
 				Type:        "string",
-				Description: "Source of the context (e.g., 'file_edit', 'command_output')",
+				Description: "Source identifier (file path, command name, etc.)",
 				Required:    true,
 			},
 			"content": {
 				Type:        "string",
-				Description: "The actual context content to capture",
+				Description: "The actual event content",
 				Required:    true,
 			},
 			"metadata": {
 				Type:        "object",
-				Description: "Additional metadata about the context",
+				Description: "Additional metadata about the event",
 				Required:    false,
 			},
 		},
 	}
 	
 	handler := func(ctx context.Context, params map[string]any) (any, error) {
+		eventTypeStr, ok := params["type"].(string)
+		if !ok {
+			return nil, fmt.Errorf("type parameter must be a string")
+		}
+		
 		source, ok := params["source"].(string)
 		if !ok {
 			return nil, fmt.Errorf("source parameter must be a string")
@@ -92,15 +135,130 @@ func (s *Server) registerCaptureContextTool() {
 			metadata = make(map[string]any)
 		}
 		
-		entry, err := s.journal.CaptureContext(ctx, source, content, metadata)
+		// Create capture event
+		event := &types.CaptureEvent{
+			Type:      types.EventType(eventTypeStr),
+			Source:    source,
+			Content:   content,
+			Metadata:  metadata,
+			Timestamp: time.Now(),
+		}
+		
+		// Process through pipeline
+		err := s.pipeline.ProcessEvent(event)
 		if err != nil {
-			return nil, fmt.Errorf("failed to capture context: %w", err)
+			return nil, fmt.Errorf("failed to process event: %w", err)
+		}
+		
+		return map[string]any{
+			"success":   true,
+			"message":   "Event processed successfully",
+			"type":      event.Type,
+			"timestamp": event.Timestamp,
+		}, nil
+	}
+	
+	s.AddTool(tool, handler)
+}
+
+// registerGetStatsTool adds the statistics tool
+func (s *Server) registerGetStatsTool() {
+	tool := &Tool{
+		Name:        "get_stats",
+		Description: "Get performance statistics for the MCP pipeline",
+		Parameters:  map[string]Parameter{},
+	}
+	
+	handler := func(ctx context.Context, params map[string]any) (any, error) {
+		pipelineMetrics := s.pipeline.GetMetrics()
+		filterStats := s.filter.GetStats()
+		
+		return map[string]any{
+			"pipeline": pipelineMetrics,
+			"filter":   filterStats,
+			"config": map[string]any{
+				"capture_mode":     s.config.CaptureMode,
+				"worker_count":     s.config.WorkerCount,
+				"batch_window_ms":  s.config.BatchWindowMs,
+				"max_batch_size":   s.config.MaxBatchSize,
+			},
+		}, nil
+	}
+	
+	s.AddTool(tool, handler)
+}
+
+// registerQueryMemoryTool adds the memory query tool
+func (s *Server) registerQueryMemoryTool() {
+	tool := &Tool{
+		Name:        "query_memory",
+		Description: "Query memories using vector similarity search",
+		Parameters: map[string]Parameter{
+			"query": {
+				Type:        "string",
+				Description: "Query text for similarity search",
+				Required:    true,
+			},
+			"limit": {
+				Type:        "number",
+				Description: "Maximum number of results to return",
+				Required:    false,
+			},
+		},
+	}
+	
+	handler := func(ctx context.Context, params map[string]any) (any, error) {
+		query, ok := params["query"].(string)
+		if !ok {
+			return nil, fmt.Errorf("query parameter must be a string")
+		}
+		
+		limit := uint64(10) // default
+		if limitParam, ok := params["limit"].(float64); ok {
+			limit = uint64(limitParam)
+		}
+		
+		// Use journal's vector search
+		results, err := s.journal.QuerySimilarMemories(ctx, query, types.TypeEpisodic, limit)
+		if err != nil {
+			return nil, fmt.Errorf("failed to search memories: %w", err)
 		}
 		
 		return map[string]any{
 			"success": true,
-			"message": "Context captured successfully",
-			"id":      entry.ID,
+			"results": results,
+			"count":   len(results),
+		}, nil
+	}
+	
+	s.AddTool(tool, handler)
+}
+
+// registerTriggerConsolidationTool adds the consolidation trigger tool
+func (s *Server) registerTriggerConsolidationTool() {
+	tool := &Tool{
+		Name:        "trigger_consolidation",
+		Description: "Manually trigger memory consolidation process",
+		Parameters:  map[string]Parameter{},
+	}
+	
+	handler := func(ctx context.Context, params map[string]any) (any, error) {
+		// Get recent memories for consolidation
+		memories, err := s.journal.GetMemories(ctx, 100)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get memories for consolidation: %w", err)
+		}
+		
+		// Trigger consolidation through journal
+		err = s.journal.ConsolidateMemories(ctx, memories)
+		if err != nil {
+			return nil, fmt.Errorf("failed to trigger consolidation: %w", err)
+		}
+		
+		return map[string]any{
+			"success": true,
+			"message": "Consolidation triggered successfully",
+			"memories_processed": len(memories),
 		}, nil
 	}
 	
@@ -232,4 +390,21 @@ func (s *Server) handleToolCall(ctx context.Context, req *Request) (*Response, e
 		ID:     req.ID,
 		Result: result,
 	}, nil
+}
+
+// Shutdown gracefully shuts down the MCP server
+func (s *Server) Shutdown() error {
+	s.logger.Info("Shutting down MCP server")
+	
+	// Shutdown the processing pipeline
+	if s.pipeline != nil {
+		err := s.pipeline.Shutdown()
+		if err != nil {
+			s.logger.Error("Error shutting down pipeline", "error", err)
+			return err
+		}
+	}
+	
+	s.logger.Info("MCP server shut down successfully")
+	return nil
 }
