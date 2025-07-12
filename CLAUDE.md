@@ -2,7 +2,8 @@
 
 ## Repository Restrictions
 
-The only restriction within this repository is that any folder prefixed with a `_` is read-only for you. It is intended for me to take notes and keep track of important context artifacts.
+- Any folder prefixed with a `_` is read-only for you. Unless explicitly directed by me or one of your directives in this document, you are only allowed to read these files.
+- Any folder prefixed with `.` is private and not accessible by you. Unless explicitly directed by me or one of your directives in this document, you are not allowed to access or modify these files.
 
 ## Project: Autonomous LLM Memory Consolidation System
 
