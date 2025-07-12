@@ -16,7 +16,6 @@ type ConsolidationConfig struct {
 	DecayFactor            float64 `mapstructure:"decay_factor"`             // Time decay factor for memory importance
 	AccessWeight           float64 `mapstructure:"access_weight"`            // Weight for access frequency in scoring
 	RelevanceWeight        float64 `mapstructure:"relevance_weight"`         // Weight for semantic relevance in scoring
-	Enabled                bool    `mapstructure:"enabled"`                  // Enable/disable consolidation
 }
 
 // LoadConfig loads configuration from viper
@@ -68,6 +67,5 @@ func (c *ConsolidationConfig) GetDefaults() map[string]any {
 		"consolidation.decay_factor":              0.01,    // Gentle time decay
 		"consolidation.access_weight":             2.0,     // Weight access frequency highly
 		"consolidation.relevance_weight":          1.5,     // Weight semantic relevance
-		"consolidation.enabled":                   true,    // Enable by default
 	}
 }

@@ -35,9 +35,9 @@
 
 ### Build Standards
 
-- **Consistent Build Output**: Always output Go builds to `bin/app` for consistent .gitignore management
-- **Docker Build Path**: Use `bin/app` as the build target in Dockerfiles
-- **Binary Location**: Ensure all build scripts and processes use the standardized `bin/app` output path
+- **Multi-Executable Build Output**: Always output Go builds to `bin/web` and `bin/mcp` for consistent .gitignore management
+- **Docker Build Path**: Use `bin/web` and `bin/mcp` as build targets in Dockerfiles
+- **Binary Location**: Ensure all build scripts and processes use the standardized output paths for each executable
 
 ### Development Approach
 
@@ -63,7 +63,7 @@ Every development session MUST follow this exact structure:
 3. **Clean Up**: Remove execution-plan.md after successful archiving
 4. **Update Roadmap**: Update tasks.md with session accomplishments and adjusted future priorities
 5. **Update Directives**: Update CLAUDE.md with any new directives or lessons learned
-6. **Reflective Process**: Following session closeout, engage in abstract reflection about the larger purpose, philosophical implications, and evolutionary context of the work, documenting results in `.artifacts/reflections/reflection-XXX.md`
+6. **Reflective Process**: Following session closeout, engage in abstract reflection about the larger purpose, philosophical implications, and evolutionary context of the work. First review previous reflections in `_context/reflections/` to consider past insights in context of current developments. Share these thoughts directly with the user for discussion, then archive the conversation results in `_context/reflections/reflection-XXX.md` using the next sequential number (not the session number)
 
 **Session Start Process (First Task of Every Session)**
 

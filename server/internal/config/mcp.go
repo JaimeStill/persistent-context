@@ -10,7 +10,6 @@ import (
 
 // MCPConfig holds MCP server configuration
 type MCPConfig struct {
-	Enabled        bool          `mapstructure:"enabled"`         // Enable MCP server
 	Name           string        `mapstructure:"name"`            // MCP server name
 	Version        string        `mapstructure:"version"`         // MCP server version
 	ServerEndpoint string        `mapstructure:"server_endpoint"` // Journal API endpoint
@@ -148,10 +147,9 @@ func (c *MCPConfig) ValidateConfig() error {
 // GetDefaults returns default configuration values
 func (c *MCPConfig) GetDefaults() map[string]any {
 	return map[string]any{
-		"mcp.enabled":             false,
 		"mcp.name":                "persistent-context-mcp",
 		"mcp.version":             "1.0.0",
-		"mcp.server_endpoint":     "http://localhost:8080",
+		"mcp.server_endpoint":     "http://localhost:8543",
 		"mcp.capture_mode":        "balanced",
 		"mcp.profiles_dir":        "~/.config/persistent-context/profiles",
 		"mcp.includes":            []string{},

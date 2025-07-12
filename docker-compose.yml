@@ -51,13 +51,13 @@ services:
       retries: 5
       start_period: 30s
 
-  persistent-context:
+  persistent-context-web:
     build:
       context: ./server
-      dockerfile: Dockerfile
-    container_name: persistent-context-server
+      dockerfile: Dockerfile.web
+    container_name: persistent-context-web
     ports:
-      - "8080:8080"
+      - "8543:8543"
     depends_on:
       qdrant:
         condition: service_healthy
@@ -65,7 +65,7 @@ services:
         condition: service_healthy
     environment:
       # HTTP Server Configuration
-      - APP_SERVER_PORT=8080
+      - APP_SERVER_PORT=8543
       - APP_SERVER_READ_TIMEOUT=10
       - APP_SERVER_WRITE_TIMEOUT=10
       - APP_SERVER_SHUTDOWN_TIMEOUT=30
@@ -106,16 +106,6 @@ services:
       # Storage Configuration
       - APP_STORAGE_PERSONA_PATH=/data/personas
       
-      # MCP Configuration
-      - APP_MCP_ENABLED=false
-      - APP_MCP_NAME=persistent-context
-      - APP_MCP_VERSION=1.0.0
-      - APP_MCP_BUFFER_SIZE=1000
-      - APP_MCP_WORKER_COUNT=2
-      - APP_MCP_RETRY_ATTEMPTS=3
-      - APP_MCP_RETRY_DELAY=1s
-      - APP_MCP_TIMEOUT=30s
-      
       # Consolidation Configuration
       - APP_CONSOLIDATION_MAX_TOKENS=128000
       - APP_CONSOLIDATION_SAFETY_MARGIN=0.7
@@ -125,16 +115,43 @@ services:
       - APP_CONSOLIDATION_DECAY_FACTOR=0.01
       - APP_CONSOLIDATION_ACCESS_WEIGHT=2.0
       - APP_CONSOLIDATION_RELEVANCE_WEIGHT=1.5
-      - APP_CONSOLIDATION_ENABLED=true
     volumes:
       - ./data/personas:/data/personas
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8543/ready"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 20s
+
+  persistent-context-mcp:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.mcp
+    container_name: persistent-context-mcp
+    depends_on:
+      persistent-context-web:
+        condition: service_healthy
+    environment:
+      # Logging Configuration
+      - APP_LOGGING_LEVEL=info
+      - APP_LOGGING_FORMAT=json
+      
+      # MCP Configuration
+      - APP_MCP_NAME=persistent-context
+      - APP_MCP_VERSION=1.0.0
+      - APP_MCP_CAPTURE_MODE=balanced
+      - APP_MCP_BUFFER_SIZE=1000
+      - APP_MCP_WORKER_COUNT=2
+      - APP_MCP_RETRY_ATTEMPTS=3
+      - APP_MCP_RETRY_DELAY=1s
+      - APP_MCP_TIMEOUT=30s
+      
+      # Journal API URL (to communicate with web server)
+      - APP_MCP_JOURNAL_API_URL=http://persistent-context-web:8543
+    restart: unless-stopped
+    # No health check needed - stdio-based service
 
 networks:
   default:

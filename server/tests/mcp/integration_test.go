@@ -13,10 +13,9 @@ import (
 func TestMCPIntegration(t *testing.T) {
 	// Create test configuration manually
 	cfg := config.MCPConfig{
-		Enabled:           true,
 		Name:              "test-mcp",
 		Version:           "1.0.0",
-		ServerEndpoint:    "http://localhost:8080",
+		ServerEndpoint:    "http://localhost:8543",
 		CaptureMode:       "balanced",
 		WorkerCount:       2,
 		BatchWindowMs:     1000,
