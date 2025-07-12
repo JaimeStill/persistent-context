@@ -32,9 +32,9 @@ The only restriction within this repository is that any folder prefixed with a `
 
 ### Build Standards
 
-- **Consistent Build Output**: Always output Go builds to `bin/server` for consistent .gitignore management
-- **Docker Build Path**: Use `bin/server` as the build target in Dockerfiles
-- **Binary Location**: Ensure all build scripts and processes use the standardized `bin/server` output path
+- **Consistent Build Output**: Always output Go builds to `bin/app` for consistent .gitignore management
+- **Docker Build Path**: Use `bin/app` as the build target in Dockerfiles
+- **Binary Location**: Ensure all build scripts and processes use the standardized `bin/app` output path
 
 ### Development Approach
 
@@ -49,9 +49,10 @@ Every development session MUST follow this exact structure:
 **Session End Process (Final Task of Every Session)**
 
 1. **Complete Execution Plan**: Update execution-plan.md with final session results and handoff details
-2. **Archive Session**: Move execution-plan.md to `_context/sessions/session-XXX.md`
-3. **Update Roadmap**: Update tasks.md with session accomplishments and adjusted future priorities
-4. **Update Directives**: Update CLAUDE.md with any new directives or lessons learned
+2. **Archive Session**: Copy execution-plan.md to `_context/sessions/session-XXX.md`
+3. **Clean Up**: Remove execution-plan.md after successful archiving
+4. **Update Roadmap**: Update tasks.md with session accomplishments and adjusted future priorities
+5. **Update Directives**: Update CLAUDE.md with any new directives or lessons learned
 
 **Session Start Process (First Task of Every Session)**
 

@@ -7,8 +7,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-// MemoryConfig holds memory processing configuration
-type MemoryConfig struct {
+// JournalConfig holds journal processing configuration
+type JournalConfig struct {
 	BatchSize             uint64        `mapstructure:"batch_size"`             // Batch size for processing
 	RetentionDays         int           `mapstructure:"retention_days"`         // Days to retain memories
 	ConsolidationInterval time.Duration `mapstructure:"consolidation_interval"` // How often to consolidate
@@ -17,12 +17,12 @@ type MemoryConfig struct {
 }
 
 // LoadConfig loads configuration from viper
-func (c *MemoryConfig) LoadConfig(v *viper.Viper) error {
-	return v.UnmarshalKey("memory", c)
+func (c *JournalConfig) LoadConfig(v *viper.Viper) error {
+	return v.UnmarshalKey("journal", c)
 }
 
 // ValidateConfig validates the configuration
-func (c *MemoryConfig) ValidateConfig() error {
+func (c *JournalConfig) ValidateConfig() error {
 	if c.BatchSize == 0 {
 		return fmt.Errorf("batch size must be positive")
 	}
@@ -47,12 +47,12 @@ func (c *MemoryConfig) ValidateConfig() error {
 }
 
 // GetDefaults returns default configuration values
-func (c *MemoryConfig) GetDefaults() map[string]any {
+func (c *JournalConfig) GetDefaults() map[string]any {
 	return map[string]any{
-		"memory.batch_size":             100,
-		"memory.retention_days":         30,
-		"memory.consolidation_interval": "6h",
-		"memory.max_memory_size":        10000,
-		"memory.strength_threshold":     0.1,
+		"journal.batch_size":             100,
+		"journal.retention_days":         30,
+		"journal.consolidation_interval": "6h",
+		"journal.max_memory_size":        10000,
+		"journal.strength_threshold":     0.1,
 	}
 }

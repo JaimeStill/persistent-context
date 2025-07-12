@@ -1,4 +1,4 @@
-package memory
+package journal
 
 import (
 	"context"
@@ -12,24 +12,17 @@ import (
 	"github.com/JaimeStill/persistent-context/internal/types"
 )
 
-// MemoryStore implements memory storage using vectordb and llm interfaces
-type MemoryStore struct {
+// VectorJournal implements LLM memory storage using vectordb and llm interfaces
+type VectorJournal struct {
 	vectorDB  vectordb.VectorDB
 	llmClient llm.LLM
-	config    *config.MemoryConfig
+	config    *config.JournalConfig
 	counter   int64
 }
 
-// Dependencies holds the dependencies for memory store
-type Dependencies struct {
-	VectorDB  vectordb.VectorDB
-	LLMClient llm.LLM
-	Config    *config.MemoryConfig
-}
-
-// NewMemoryStore creates a new memory store with Qdrant and Ollama integration
-func NewMemoryStore(deps *Dependencies) *MemoryStore {
-	return &MemoryStore{
+// NewVectorJournal creates a new vector-based journal implementation
+func NewVectorJournal(deps *Dependencies) *VectorJournal {
+	return &VectorJournal{
 		vectorDB:  deps.VectorDB,
 		llmClient: deps.LLMClient,
 		config:    deps.Config,
@@ -38,11 +31,11 @@ func NewMemoryStore(deps *Dependencies) *MemoryStore {
 }
 
 // CaptureContext implements the MCP interface for capturing context
-func (ms *MemoryStore) CaptureContext(ctx context.Context, source string, content string, metadata map[string]any) error {
-	ms.counter++
+func (vj *VectorJournal) CaptureContext(ctx context.Context, source string, content string, metadata map[string]any) error {
+	vj.counter++
 	
 	// Generate embedding for the content
-	embedding, err := ms.llmClient.GenerateEmbedding(ctx, content)
+	embedding, err := vj.llmClient.GenerateEmbedding(ctx, content)
 	if err != nil {
 		slog.Error("Failed to generate embedding", "error", err, "source", source)
 		return fmt.Errorf("failed to generate embedding: %w", err)
@@ -50,7 +43,7 @@ func (ms *MemoryStore) CaptureContext(ctx context.Context, source string, conten
 
 	// Create memory entry
 	entry := &types.MemoryEntry{
-		ID:         fmt.Sprintf("mem_%d_%d", time.Now().Unix(), ms.counter),
+		ID:         fmt.Sprintf("mem_%d_%d", time.Now().Unix(), vj.counter),
 		Type:       types.TypeEpisodic,
 		Content:    content,
 		Embedding:  embedding,
@@ -68,7 +61,7 @@ func (ms *MemoryStore) CaptureContext(ctx context.Context, source string, conten
 	entry.Metadata["captured_at"] = time.Now().Unix()
 	
 	// Store in vector database
-	if err := ms.vectorDB.Store(ctx, entry); err != nil {
+	if err := vj.vectorDB.Store(ctx, entry); err != nil {
 		slog.Error("Failed to store memory in vector database", "error", err, "id", entry.ID)
 		return fmt.Errorf("failed to store memory: %w", err)
 	}
@@ -83,15 +76,15 @@ func (ms *MemoryStore) CaptureContext(ctx context.Context, source string, conten
 }
 
 // GetMemories retrieves recent memories from episodic storage
-func (ms *MemoryStore) GetMemories(ctx context.Context, limit uint64) ([]*types.MemoryEntry, error) {
+func (vj *VectorJournal) GetMemories(ctx context.Context, limit uint64) ([]*types.MemoryEntry, error) {
 	if limit == 0 {
-		limit = ms.config.BatchSize
+		limit = vj.config.BatchSize
 	}
 
 	// Create a dummy vector for recent memories query (we'll improve this in Session 3)
 	dummyVector := make([]float32, 1536) // Standard embedding dimension
 	
-	memories, err := ms.vectorDB.Query(ctx, types.TypeEpisodic, dummyVector, limit)
+	memories, err := vj.vectorDB.Query(ctx, types.TypeEpisodic, dummyVector, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query memories: %w", err)
 	}
@@ -100,8 +93,8 @@ func (ms *MemoryStore) GetMemories(ctx context.Context, limit uint64) ([]*types.
 }
 
 // GetMemoryByID retrieves a specific memory by ID
-func (ms *MemoryStore) GetMemoryByID(ctx context.Context, id string) (*types.MemoryEntry, error) {
-	entry, err := ms.vectorDB.Retrieve(ctx, types.TypeEpisodic, id)
+func (vj *VectorJournal) GetMemoryByID(ctx context.Context, id string) (*types.MemoryEntry, error) {
+	entry, err := vj.vectorDB.Retrieve(ctx, types.TypeEpisodic, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve memory %s: %w", id, err)
 	}
@@ -113,9 +106,9 @@ func (ms *MemoryStore) GetMemoryByID(ctx context.Context, id string) (*types.Mem
 }
 
 // QuerySimilarMemories finds memories similar to the given content
-func (ms *MemoryStore) QuerySimilarMemories(ctx context.Context, content string, memType types.MemoryType, limit uint64) ([]*types.MemoryEntry, error) {
+func (vj *VectorJournal) QuerySimilarMemories(ctx context.Context, content string, memType types.MemoryType, limit uint64) ([]*types.MemoryEntry, error) {
 	// Generate embedding for the query content
-	embedding, err := ms.llmClient.GenerateEmbedding(ctx, content)
+	embedding, err := vj.llmClient.GenerateEmbedding(ctx, content)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate query embedding: %w", err)
 	}
@@ -125,7 +118,7 @@ func (ms *MemoryStore) QuerySimilarMemories(ctx context.Context, content string,
 	}
 
 	// Query vector database
-	memories, err := ms.vectorDB.Query(ctx, memType, embedding, limit)
+	memories, err := vj.vectorDB.Query(ctx, memType, embedding, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query similar memories: %w", err)
 	}
@@ -134,8 +127,8 @@ func (ms *MemoryStore) QuerySimilarMemories(ctx context.Context, content string,
 }
 
 // BatchStoreMemories stores multiple memories efficiently
-func (ms *MemoryStore) BatchStoreMemories(ctx context.Context, entries []*types.MemoryEntry) error {
-	batchSize := int(ms.config.BatchSize)
+func (vj *VectorJournal) BatchStoreMemories(ctx context.Context, entries []*types.MemoryEntry) error {
+	batchSize := int(vj.config.BatchSize)
 	if batchSize <= 0 {
 		batchSize = 100
 	}
@@ -148,7 +141,7 @@ func (ms *MemoryStore) BatchStoreMemories(ctx context.Context, entries []*types.
 
 		batch := entries[i:end]
 		for _, entry := range batch {
-			if err := ms.vectorDB.Store(ctx, entry); err != nil {
+			if err := vj.vectorDB.Store(ctx, entry); err != nil {
 				slog.Error("Failed to store memory in batch", "error", err, "id", entry.ID)
 				return fmt.Errorf("failed to store memory %s: %w", entry.ID, err)
 			}
@@ -161,7 +154,7 @@ func (ms *MemoryStore) BatchStoreMemories(ctx context.Context, entries []*types.
 }
 
 // ConsolidateMemories processes episodic memories into semantic knowledge
-func (ms *MemoryStore) ConsolidateMemories(ctx context.Context, memories []*types.MemoryEntry) error {
+func (vj *VectorJournal) ConsolidateMemories(ctx context.Context, memories []*types.MemoryEntry) error {
 	if len(memories) == 0 {
 		return nil
 	}
@@ -173,21 +166,21 @@ func (ms *MemoryStore) ConsolidateMemories(ctx context.Context, memories []*type
 	}
 
 	// Use LLM to consolidate memories
-	consolidatedContent, err := ms.llmClient.ConsolidateMemories(ctx, memoryTexts)
+	consolidatedContent, err := vj.llmClient.ConsolidateMemories(ctx, memoryTexts)
 	if err != nil {
 		return fmt.Errorf("failed to consolidate memories: %w", err)
 	}
 
 	// Generate embedding for consolidated content
-	embedding, err := ms.llmClient.GenerateEmbedding(ctx, consolidatedContent)
+	embedding, err := vj.llmClient.GenerateEmbedding(ctx, consolidatedContent)
 	if err != nil {
 		return fmt.Errorf("failed to generate embedding for consolidated memory: %w", err)
 	}
 
 	// Create semantic memory entry
-	ms.counter++
+	vj.counter++
 	semanticEntry := &types.MemoryEntry{
-		ID:        fmt.Sprintf("semantic_%d_%d", time.Now().Unix(), ms.counter),
+		ID:        fmt.Sprintf("semantic_%d_%d", time.Now().Unix(), vj.counter),
 		Type:      types.TypeSemantic,
 		Content:   consolidatedContent,
 		Embedding: embedding,
@@ -202,7 +195,7 @@ func (ms *MemoryStore) ConsolidateMemories(ctx context.Context, memories []*type
 	}
 
 	// Store semantic memory
-	if err := ms.vectorDB.Store(ctx, semanticEntry); err != nil {
+	if err := vj.vectorDB.Store(ctx, semanticEntry); err != nil {
 		return fmt.Errorf("failed to store semantic memory: %w", err)
 	}
 
@@ -215,7 +208,7 @@ func (ms *MemoryStore) ConsolidateMemories(ctx context.Context, memories []*type
 }
 
 // GetMemoryStats returns statistics about stored memories
-func (ms *MemoryStore) GetMemoryStats(ctx context.Context) (map[string]any, error) {
+func (vj *VectorJournal) GetMemoryStats(ctx context.Context) (map[string]any, error) {
 	stats := map[string]any{
 		"episodic_memories":      0,
 		"semantic_memories":      0,
@@ -231,14 +224,14 @@ func (ms *MemoryStore) GetMemoryStats(ctx context.Context) (map[string]any, erro
 }
 
 // HealthCheck implements the HealthChecker interface
-func (ms *MemoryStore) HealthCheck(ctx context.Context) error {
+func (vj *VectorJournal) HealthCheck(ctx context.Context) error {
 	// Check Qdrant connectivity
-	if err := ms.vectorDB.HealthCheck(ctx); err != nil {
+	if err := vj.vectorDB.HealthCheck(ctx); err != nil {
 		return fmt.Errorf("vector database health check failed: %w", err)
 	}
 
 	// Check Ollama connectivity
-	if err := ms.llmClient.HealthCheck(ctx); err != nil {
+	if err := vj.llmClient.HealthCheck(ctx); err != nil {
 		return fmt.Errorf("LLM client health check failed: %w", err)
 	}
 

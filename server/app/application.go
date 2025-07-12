@@ -11,7 +11,7 @@ import (
 	httpserver "github.com/JaimeStill/persistent-context/internal/http"
 	"github.com/JaimeStill/persistent-context/internal/llm"
 	"github.com/JaimeStill/persistent-context/internal/mcp"
-	"github.com/JaimeStill/persistent-context/internal/memory"
+	"github.com/JaimeStill/persistent-context/internal/journal"
 	"github.com/JaimeStill/persistent-context/internal/vectordb"
 	"github.com/JaimeStill/persistent-context/internal/logger"
 )
@@ -24,7 +24,7 @@ type Application struct {
 	// Core components
 	vectorDB        vectordb.VectorDB
 	llmClient       llm.LLM
-	memoryStore     *memory.MemoryStore
+	journal         journal.Journal
 	consolidation   *consolidation.Engine
 	httpServer      *httpserver.Server
 	mcpServer       *mcp.Server
@@ -78,15 +78,15 @@ func (a *Application) initializeComponents() error {
 		return fmt.Errorf("failed to create LLM client: %w", err)
 	}
 
-	memoryDeps := &memory.Dependencies{
+	journalDeps := &journal.Dependencies{
 		VectorDB:  a.vectorDB,
 		LLMClient: a.llmClient,
-		Config:    &a.config.Memory,
+		Config:    &a.config.Journal,
 	}
-	a.memoryStore = memory.NewMemoryStore(memoryDeps)
+	a.journal = journal.NewJournal(journalDeps)
 
 	if a.config.Consolidation.Enabled {
-		a.consolidation = consolidation.NewEngine(a.memoryStore, a.llmClient, &a.config.Consolidation)
+		a.consolidation = consolidation.NewEngine(a.journal, a.llmClient, &a.config.Consolidation)
 	}
 
 	httpDeps := &httpserver.Dependencies{
@@ -96,7 +96,7 @@ func (a *Application) initializeComponents() error {
 	a.httpServer = httpserver.NewServer(&a.config.HTTP, httpDeps)
 
 	if a.config.MCP.Enabled {
-		a.mcpServer = mcp.NewServer(a.config.MCP.Name, a.config.MCP.Version, a.memoryStore)
+		a.mcpServer = mcp.NewServer(a.config.MCP.Name, a.config.MCP.Version, a.journal)
 	}
 
 	return nil
@@ -175,9 +175,9 @@ func (a *Application) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
-// GetMemoryStore returns the memory store for external use
-func (a *Application) GetMemoryStore() *memory.MemoryStore {
-	return a.memoryStore
+// GetJournal returns the journal for external use
+func (a *Application) GetJournal() journal.Journal {
+	return a.journal
 }
 
 // GetConsolidationEngine returns the consolidation engine for external use

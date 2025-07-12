@@ -20,7 +20,7 @@ type Config struct {
 	Logging       LoggingConfig       `mapstructure:"logging"`
 	VectorDB      VectorDBConfig      `mapstructure:"vectordb"`
 	LLM           LLMConfig           `mapstructure:"llm"`
-	Memory        MemoryConfig        `mapstructure:"memory"`
+	Journal       JournalConfig       `mapstructure:"journal"`
 	MCP           MCPConfig           `mapstructure:"mcp"`
 	Storage       StorageConfig       `mapstructure:"storage"`
 	Consolidation ConsolidationConfig `mapstructure:"consolidation"`
@@ -71,7 +71,7 @@ func (c *Config) loadPackageConfigs(v *viper.Viper) error {
 		&c.Logging,
 		&c.VectorDB,
 		&c.LLM,
-		&c.Memory,
+		&c.Journal,
 		&c.MCP,
 		&c.Storage,
 		&c.Consolidation,
@@ -94,7 +94,7 @@ func setDefaults(v *viper.Viper) {
 		&LoggingConfig{},
 		&VectorDBConfig{},
 		&LLMConfig{},
-		&MemoryConfig{},
+		&JournalConfig{},
 		&MCPConfig{},
 		&StorageConfig{},
 		&ConsolidationConfig{},
@@ -116,7 +116,7 @@ func (c *Config) Validate() error {
 		&c.Logging,
 		&c.VectorDB,
 		&c.LLM,
-		&c.Memory,
+		&c.Journal,
 		&c.MCP,
 		&c.Storage,
 		&c.Consolidation,

@@ -17,7 +17,7 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o bin/server ./app/
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o bin/app ./app/
 
 # Final stage
 FROM alpine:3.21
@@ -37,10 +37,10 @@ RUN mkdir -p /data/personas && \
 WORKDIR /app
 
 # Copy binary from builder stage
-COPY --from=builder /app/bin/server .
+COPY --from=builder /app/bin/app .
 
 # Change ownership to non-root user
-RUN chown appuser:appgroup /app/server
+RUN chown appuser:appgroup /app/app
 
 # Switch to non-root user
 USER appuser
@@ -53,4 +53,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
 # Run the application
-CMD ["./server"]
+CMD ["./app"]

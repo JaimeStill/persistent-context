@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/JaimeStill/persistent-context/internal/journal"
 )
 
 // Server represents an MCP server instance
@@ -14,12 +16,7 @@ type Server struct {
 	version     string
 	tools       map[string]*Tool
 	handlers    map[string]ToolHandler
-	memoryStore MemoryStore
-}
-
-// MemoryStore interface for storing captured context
-type MemoryStore interface {
-	CaptureContext(ctx context.Context, source string, content string, metadata map[string]any) error
+	journal journal.Journal
 }
 
 // ToolHandler is a function that handles tool invocations
@@ -40,13 +37,13 @@ type Parameter struct {
 }
 
 // NewServer creates a new MCP server
-func NewServer(name, version string, memoryStore MemoryStore) *Server {
+func NewServer(name, version string, journal journal.Journal) *Server {
 	s := &Server{
 		name:        name,
 		version:     version,
 		tools:       make(map[string]*Tool),
 		handlers:    make(map[string]ToolHandler),
-		memoryStore: memoryStore,
+		journal: journal,
 	}
 	
 	// Register default capture_context tool
@@ -95,7 +92,7 @@ func (s *Server) registerCaptureContextTool() {
 			metadata = make(map[string]any)
 		}
 		
-		err := s.memoryStore.CaptureContext(ctx, source, content, metadata)
+		err := s.journal.CaptureContext(ctx, source, content, metadata)
 		if err != nil {
 			return nil, fmt.Errorf("failed to capture context: %w", err)
 		}

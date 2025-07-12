@@ -43,7 +43,7 @@ func NewServer(cfg *config.HTTPConfig, deps *Dependencies) *Server {
 		config: cfg,
 		engine: engine,
 		server: &http.Server{
-			Addr:         fmt.Sprintf(":%d", cfg.Port),
+			Addr:         fmt.Sprintf(":%s", cfg.Port),
 			Handler:      engine,
 			ReadTimeout:  time.Duration(cfg.ReadTimeout) * time.Second,
 			WriteTimeout: time.Duration(cfg.WriteTimeout) * time.Second,

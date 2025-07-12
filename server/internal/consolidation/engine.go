@@ -10,7 +10,7 @@ import (
 
 	"github.com/JaimeStill/persistent-context/internal/config"
 	"github.com/JaimeStill/persistent-context/internal/llm"
-	"github.com/JaimeStill/persistent-context/internal/memory"
+	"github.com/JaimeStill/persistent-context/internal/journal"
 	"github.com/JaimeStill/persistent-context/internal/types"
 )
 
@@ -137,7 +137,7 @@ func (cm *ContextMonitor) GetContextState(memories []*types.MemoryEntry) Context
 
 // Engine handles event-driven memory consolidation
 type Engine struct {
-	memoryStore *memory.MemoryStore
+	journal journal.Journal
 	llmClient   llm.LLM
 	config      *config.ConsolidationConfig
 	monitor     *ContextMonitor
@@ -148,9 +148,9 @@ type Engine struct {
 }
 
 // NewEngine creates a new consolidation engine
-func NewEngine(memoryStore *memory.MemoryStore, llmClient llm.LLM, config *config.ConsolidationConfig) *Engine {
+func NewEngine(journal journal.Journal, llmClient llm.LLM, config *config.ConsolidationConfig) *Engine {
 	return &Engine{
-		memoryStore: memoryStore,
+		journal: journal,
 		llmClient:   llmClient,
 		config:      config,
 		monitor:     NewContextMonitor(config.MaxTokens, config.SafetyMargin),
@@ -238,7 +238,7 @@ func (e *Engine) OnContextInit(ctx context.Context, event ConsolidationEvent) er
 	e.logger.Info("Processing context initialization consolidation")
 	
 	// Get recent memories from previous session
-	memories, err := e.memoryStore.GetMemories(ctx, uint64(e.config.MemoryCountThreshold))
+	memories, err := e.journal.GetMemories(ctx, uint64(e.config.MemoryCountThreshold))
 	if err != nil {
 		return fmt.Errorf("failed to get memories: %w", err)
 	}
@@ -266,7 +266,7 @@ func (e *Engine) OnNewContext(ctx context.Context, event ConsolidationEvent) err
 	e.logger.Info("Processing new context consolidation")
 	
 	// Check for consolidation opportunities
-	memories, err := e.memoryStore.GetMemories(ctx, uint64(e.config.MemoryCountThreshold*2))
+	memories, err := e.journal.GetMemories(ctx, uint64(e.config.MemoryCountThreshold*2))
 	if err != nil {
 		return fmt.Errorf("failed to get memories: %w", err)
 	}
@@ -311,7 +311,7 @@ func (e *Engine) OnConversationEnd(ctx context.Context, event ConsolidationEvent
 	e.logger.Info("Processing conversation end consolidation")
 	
 	// Get all recent memories
-	memories, err := e.memoryStore.GetMemories(ctx, uint64(e.config.MemoryCountThreshold*3))
+	memories, err := e.journal.GetMemories(ctx, uint64(e.config.MemoryCountThreshold*3))
 	if err != nil {
 		return fmt.Errorf("failed to get memories: %w", err)
 	}
@@ -410,7 +410,7 @@ func (e *Engine) consolidateMemories(ctx context.Context, memories []*types.Memo
 		"trigger", trigger)
 	
 	// Perform consolidation using the memory store
-	if err := e.memoryStore.ConsolidateMemories(ctx, memories); err != nil {
+	if err := e.journal.ConsolidateMemories(ctx, memories); err != nil {
 		return fmt.Errorf("failed to consolidate memories: %w", err)
 	}
 	
@@ -454,7 +454,7 @@ func (e *Engine) scheduleEarlyConsolidation(ctx context.Context) error {
 	e.logger.Info("Scheduling early consolidation due to context window constraints")
 	
 	// Get a smaller set of memories for emergency consolidation
-	memories, err := e.memoryStore.GetMemories(ctx, uint64(e.config.MemoryCountThreshold/2))
+	memories, err := e.journal.GetMemories(ctx, uint64(e.config.MemoryCountThreshold/2))
 	if err != nil {
 		return fmt.Errorf("failed to get memories for early consolidation: %w", err)
 	}
