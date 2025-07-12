@@ -14,9 +14,11 @@ type HTTPConfig struct {
 	ShutdownTimeout int    `mapstructure:"shutdown_timeout"`
 }
 
-// LoadConfig loads configuration from viper
+// LoadConfig processes configuration after main unmarshaling
+// The main config.Load() already unmarshals all values including environment variables.
+// This method is for post-processing only and currently has no additional behavior needed.
 func (c *HTTPConfig) LoadConfig(v *viper.Viper) error {
-	return v.UnmarshalKey("server", c)
+	return nil
 }
 
 // ValidateConfig validates the configuration
@@ -43,7 +45,7 @@ func (c *HTTPConfig) ValidateConfig() error {
 // GetDefaults returns default configuration values
 func (c *HTTPConfig) GetDefaults() map[string]any {
 	return map[string]any{
-		"server.port":             "8080",
+		"server.port":             "8543",
 		"server.read_timeout":     10,
 		"server.write_timeout":    10,
 		"server.shutdown_timeout": 30,

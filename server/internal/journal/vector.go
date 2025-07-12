@@ -15,19 +15,27 @@ import (
 
 // VectorJournal implements LLM memory storage using vectordb and llm interfaces
 type VectorJournal struct {
-	vectorDB  vectordb.VectorDB
-	llmClient llm.LLM
-	config    *config.JournalConfig
-	counter   int64
+	vectorDB     vectordb.VectorDB
+	llmClient    llm.LLM
+	config       *config.JournalConfig
+	scorer       *MemoryScorer
+	associations *AssociationTracker
+	analyzer     *AssociationAnalyzer
+	counter      int64
 }
 
 // NewVectorJournal creates a new vector-based journal implementation
 func NewVectorJournal(deps *Dependencies) *VectorJournal {
+	associations := NewAssociationTracker()
+	
 	return &VectorJournal{
-		vectorDB:  deps.VectorDB,
-		llmClient: deps.LLMClient,
-		config:    deps.Config,
-		counter:   time.Now().UnixNano(), // Use timestamp as base counter
+		vectorDB:     deps.VectorDB,
+		llmClient:    deps.LLMClient,
+		config:       deps.Config,
+		scorer:       NewMemoryScorer(deps.ConsolidationConfig),
+		associations: associations,
+		analyzer:     NewAssociationAnalyzer(associations),
+		counter:      time.Now().UnixNano(), // Use timestamp as base counter
 	}
 }
 
@@ -44,14 +52,15 @@ func (vj *VectorJournal) CaptureContext(ctx context.Context, source string, cont
 
 	// Create memory entry
 	entry := &types.MemoryEntry{
-		ID:         uuid.New().String(),
-		Type:       types.TypeEpisodic,
-		Content:    content,
-		Embedding:  embedding,
-		Metadata:   metadata,
-		CreatedAt:  time.Now(),
-		AccessedAt: time.Now(),
-		Strength:   1.0, // New memories start with full strength
+		ID:            uuid.New().String(),
+		Type:          types.TypeEpisodic,
+		Content:       content,
+		Embedding:     embedding,
+		Metadata:      metadata,
+		CreatedAt:     time.Now(),
+		AccessedAt:    time.Now(),
+		Strength:      1.0, // New memories start with full strength
+		AssociationIDs: []string{}, // Initialize empty associations
 	}
 	
 	// Add source to metadata
@@ -60,6 +69,9 @@ func (vj *VectorJournal) CaptureContext(ctx context.Context, source string, cont
 	}
 	entry.Metadata["source"] = source
 	entry.Metadata["captured_at"] = time.Now().Unix()
+	
+	// Initialize memory scoring
+	entry.Score = vj.scorer.ScoreMemory(entry)
 	
 	// Store in vector database
 	if err := vj.vectorDB.Store(ctx, entry); err != nil {
@@ -72,6 +84,9 @@ func (vj *VectorJournal) CaptureContext(ctx context.Context, source string, cont
 		"id", entry.ID,
 		"content_length", len(content),
 		"embedding_dim", len(embedding))
+	
+	// Analyze associations with recent memories
+	go vj.analyzeNewMemoryAssociations(ctx, entry)
 	
 	return entry, nil
 }
@@ -100,8 +115,13 @@ func (vj *VectorJournal) GetMemoryByID(ctx context.Context, id string) (*types.M
 		return nil, fmt.Errorf("failed to retrieve memory %s: %w", id, err)
 	}
 
-	// Update access time (we'll implement this properly in Session 3)
-	entry.AccessedAt = time.Now()
+	// Update access tracking using enhanced scoring system
+	vj.scorer.UpdateMemoryAccess(entry)
+	
+	// Store updated memory with new score back to database
+	if err := vj.vectorDB.Store(ctx, entry); err != nil {
+		slog.Warn("Failed to update memory access tracking", "error", err, "id", entry.ID)
+	}
 	
 	return entry, nil
 }
@@ -245,4 +265,68 @@ func extractMemoryIDs(memories []*types.MemoryEntry) []string {
 		ids[i] = mem.ID
 	}
 	return ids
+}
+
+// analyzeNewMemoryAssociations runs association analysis for a newly created memory
+func (vj *VectorJournal) analyzeNewMemoryAssociations(ctx context.Context, newMemory *types.MemoryEntry) {
+	// Get recent memories for association analysis
+	recentMemories, err := vj.GetMemories(ctx, 100) // Get last 100 memories
+	if err != nil {
+		slog.Warn("Failed to get recent memories for association analysis", "error", err)
+		return
+	}
+	
+	// Analyze temporal associations (memories within 1 hour)
+	vj.analyzer.AnalyzeTemporalAssociations(ctx, newMemory, recentMemories, time.Hour)
+	
+	// Analyze semantic associations (similarity threshold 0.8)
+	vj.analyzer.AnalyzeSemanticAssociations(ctx, newMemory, recentMemories, 0.8)
+	
+	// Analyze contextual associations (same source)
+	vj.analyzer.AnalyzeContextualAssociations(ctx, newMemory, recentMemories)
+	
+	// Update memory with association IDs
+	associationIDs := vj.associations.GetRelatedMemoryIDs(newMemory.ID)
+	if len(associationIDs) > 0 {
+		newMemory.AssociationIDs = associationIDs
+		// Store updated memory (fire and forget, don't block on errors)
+		if err := vj.vectorDB.Store(ctx, newMemory); err != nil {
+			slog.Warn("Failed to update memory with associations", "error", err, "id", newMemory.ID)
+		}
+	}
+	
+	slog.Info("Association analysis complete",
+		"memory_id", newMemory.ID,
+		"associations_found", len(associationIDs))
+}
+
+// GetMemoryWithAssociations retrieves a memory and its associated memories
+func (vj *VectorJournal) GetMemoryWithAssociations(ctx context.Context, id string) (*types.MemoryEntry, []*types.MemoryEntry, error) {
+	// Get the main memory
+	memory, err := vj.GetMemoryByID(ctx, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	
+	// Get associated memory IDs
+	associatedIDs := vj.associations.GetRelatedMemoryIDs(id)
+	
+	// Retrieve associated memories
+	associatedMemories := make([]*types.MemoryEntry, 0, len(associatedIDs))
+	for _, assocID := range associatedIDs {
+		// Try to retrieve each associated memory (could be different types)
+		for _, memType := range []types.MemoryType{types.TypeEpisodic, types.TypeSemantic, types.TypeProcedural, types.TypeMetacognitive} {
+			assocMemory, err := vj.vectorDB.Retrieve(ctx, memType, assocID)
+			if err == nil {
+				associatedMemories = append(associatedMemories, assocMemory)
+				break // Found it, move to next ID
+			}
+		}
+	}
+	
+	slog.Info("Retrieved memory with associations",
+		"memory_id", id,
+		"associated_count", len(associatedMemories))
+	
+	return memory, associatedMemories, nil
 }

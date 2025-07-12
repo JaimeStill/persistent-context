@@ -76,10 +76,17 @@ func (a *WebApplication) Initialize() error {
 
 	// Initialize Journal
 	journalDeps := &journal.Dependencies{
-		VectorDB:  a.vectorDB,
-		LLMClient: a.llmClient,
-		Config:    &a.config.Journal,
+		VectorDB:            a.vectorDB,
+		LLMClient:           a.llmClient,
+		Config:              &a.config.Journal,
+		ConsolidationConfig: &a.config.Consolidation,
 	}
+	
+	// Validate dependencies before creating journal
+	if err := journalDeps.Validate(); err != nil {
+		return fmt.Errorf("journal dependencies validation failed: %w", err)
+	}
+	
 	a.journal = journal.NewJournal(journalDeps)
 
 	// Initialize Consolidation Engine

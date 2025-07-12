@@ -22,16 +22,57 @@ const (
 	TypeMetacognitive MemoryType = "metacognitive"
 )
 
+// AssociationType represents different types of memory associations
+type AssociationType string
+
+const (
+	// AssociationTemporal represents memories that occurred close in time
+	AssociationTemporal AssociationType = "temporal"
+	
+	// AssociationSemantic represents memories with similar content/meaning
+	AssociationSemantic AssociationType = "semantic"
+	
+	// AssociationCausal represents cause-and-effect relationships
+	AssociationCausal AssociationType = "causal"
+	
+	// AssociationContextual represents memories from similar contexts
+	AssociationContextual AssociationType = "contextual"
+)
+
+// MemoryAssociation represents a relationship between two memories
+type MemoryAssociation struct {
+	ID         string          `json:"id"`           // Unique association ID
+	SourceID   string          `json:"source_id"`    // Source memory ID
+	TargetID   string          `json:"target_id"`    // Target memory ID
+	Type       AssociationType `json:"type"`         // Type of association
+	Strength   float64         `json:"strength"`     // Association strength (0.0-1.0)
+	CreatedAt  time.Time       `json:"created_at"`   // When association was created
+	UpdatedAt  time.Time       `json:"updated_at"`   // Last update time
+	Metadata   map[string]any  `json:"metadata"`     // Additional association data
+}
+
+// MemoryScore represents enhanced scoring for memory importance
+type MemoryScore struct {
+	BaseImportance    float64   `json:"base_importance"`     // Original importance (0.0-1.0)
+	DecayFactor       float64   `json:"decay_factor"`        // Time-based decay (0.0-1.0)
+	AccessFrequency   int       `json:"access_frequency"`    // Number of access events
+	LastAccessed      time.Time `json:"last_accessed"`       // Most recent access time
+	RelevanceScore    float64   `json:"relevance_score"`     // Semantic relevance score
+	CompositeScore    float64   `json:"composite_score"`     // Final calculated score
+}
+
 // MemoryEntry represents a single memory stored in the system
 type MemoryEntry struct {
-	ID         string            `json:"id"`
-	Type       MemoryType        `json:"type"`
-	Content    string            `json:"content"`
-	Embedding  []float32         `json:"embedding,omitempty"`
-	Metadata   map[string]any    `json:"metadata,omitempty"`
-	CreatedAt  time.Time         `json:"created_at"`
-	AccessedAt time.Time         `json:"accessed_at"`
-	Strength   float32           `json:"strength"`
+	ID            string            `json:"id"`
+	Type          MemoryType        `json:"type"`
+	Content       string            `json:"content"`
+	Embedding     []float32         `json:"embedding,omitempty"`
+	Metadata      map[string]any    `json:"metadata,omitempty"`
+	CreatedAt     time.Time         `json:"created_at"`
+	AccessedAt    time.Time         `json:"accessed_at"`
+	Strength      float32           `json:"strength"`
+	Score         MemoryScore       `json:"score"`               // Enhanced scoring
+	AssociationIDs []string         `json:"association_ids"`     // Related memory references
 }
 
 // Memory represents the base interface for all memory types

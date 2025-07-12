@@ -12,7 +12,7 @@ import (
 type MCPConfig struct {
 	Name           string        `mapstructure:"name"`            // MCP server name
 	Version        string        `mapstructure:"version"`         // MCP server version
-	ServerEndpoint string        `mapstructure:"server_endpoint"` // Journal API endpoint
+	WebAPIURL      string        `mapstructure:"web_api_url"`     // Web API URL for HTTP client
 	CaptureMode    string        `mapstructure:"capture_mode"`    // Active capture profile
 	ProfilesDir    string        `mapstructure:"profiles_dir"`    // External profiles directory
 	Includes       []string      `mapstructure:"includes"`        // Additional config files
@@ -33,9 +33,11 @@ type MCPConfig struct {
 	Profiles    map[string]*types.Profile `mapstructure:"profiles"`     // Capture mode profiles
 }
 
-// LoadConfig loads configuration from viper
+// LoadConfig processes configuration after main unmarshaling
+// The main config.Load() already unmarshals all values including environment variables.
+// This method is for post-processing only and currently has no additional behavior needed.
 func (c *MCPConfig) LoadConfig(v *viper.Viper) error {
-	return v.UnmarshalKey("mcp", c)
+	return nil
 }
 
 // ValidateConfig validates the configuration
@@ -48,8 +50,8 @@ func (c *MCPConfig) ValidateConfig() error {
 		return fmt.Errorf("mcp version cannot be empty")
 	}
 	
-	if c.ServerEndpoint == "" {
-		return fmt.Errorf("server endpoint cannot be empty")
+	if c.WebAPIURL == "" {
+		return fmt.Errorf("web API URL cannot be empty")
 	}
 	
 	if c.CaptureMode == "" {
@@ -149,7 +151,7 @@ func (c *MCPConfig) GetDefaults() map[string]any {
 	return map[string]any{
 		"mcp.name":                "persistent-context-mcp",
 		"mcp.version":             "1.0.0",
-		"mcp.server_endpoint":     "http://localhost:8543",
+		"mcp.web_api_url":         "http://localhost:8543",
 		"mcp.capture_mode":        "balanced",
 		"mcp.profiles_dir":        "~/.config/persistent-context/profiles",
 		"mcp.includes":            []string{},

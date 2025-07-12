@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"sort"
 	"sync"
 	"time"
@@ -385,10 +386,17 @@ func (e *Engine) scoreMemory(mem *types.MemoryEntry) MemoryScore {
 	// Calculate semantic relevance (simplified - could use embedding similarity)
 	semanticRelevance := mem.Strength // Use existing strength as proxy
 	
+	// Boost score based on association count (more connections = more important)
+	associationBoost := float32(1.0)
+	if len(mem.AssociationIDs) > 0 {
+		// Logarithmic scaling to prevent excessive boost
+		associationBoost = 1.0 + float32(math.Log(1+float64(len(mem.AssociationIDs))))*0.2
+	}
+	
 	// Calculate total score
 	accessScore := float32(accessCount) * float32(e.config.AccessWeight)
 	relevanceScore := semanticRelevance * float32(e.config.RelevanceWeight)
-	totalScore := (accessScore + relevanceScore) * decayFactor
+	totalScore := (accessScore + relevanceScore) * decayFactor * associationBoost
 	
 	return MemoryScore{
 		AccessCount:       accessCount,

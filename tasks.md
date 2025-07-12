@@ -310,7 +310,7 @@ This document outlines the first 3 development sessions for building the Autonom
 **Major Accomplishments:**
 
 1. **Flexible Application Framework**: Created `internal/app/` with Application interface and Runner for consistent process lifecycle
-2. **Independent Executables**: 
+2. **Independent Executables**:
    - [x] Create separate `cmd/mcp/` and `cmd/web/` executables
    - [x] Clean separation of concerns and dependencies (no shared code needed)
 3. **Configuration & Docker Improvements**:
@@ -332,6 +332,7 @@ This document outlines the first 3 development sessions for building the Autonom
 - **Clean Package Structure**: Everything properly in `internal/`
 
 **Architecture Ready For:**
+
 - Claude Code MCP integration (standalone MCP executable)
 - Independent scaling of web and MCP services
 - Enhanced deployment flexibility with Docker
@@ -342,15 +343,70 @@ This document outlines the first 3 development sessions for building the Autonom
 - [ ] Memory association tracking system
 - [ ] Test Claude Code integration with standalone MCP server
 
-### Session 11: Persona Management & Advanced MCP
+### Session 11: Enhanced Memory System & MCP Architecture - COMPLETED
 
-- [ ] Complete persona import/export functionality
-- [ ] Add persona versioning and branching  
-- [ ] Implement specialized MCP sensors (file-watcher, git-monitor)
-- [ ] Create persona merge capabilities
+**Major Accomplishments:**
 
-### Session 12: Client Interface Foundation
+- [x] **Enhanced Memory Scoring**: Comprehensive algorithms with decay, frequency, and relevance factors
+- [x] **Memory Association Tracking**: Graph-based system with temporal, semantic, and contextual associations
+- [x] **Persona Foundation**: Import/export with versioning and comparison capabilities
+- [x] **Educational Documentation**: Created source-001.md and source-002.md with detailed explanations
+- [x] **Architecture Improvements**: Dependency validation and clean integration patterns
 
-- [ ] Design memory analysis API
-- [ ] Create basic CLI for memory inspection
-- [ ] Plan web interface architecture
+**Extended Session - MCP Architecture Refactoring:**
+
+- [x] **Clean Architecture**: Refactored MCP server to use HTTP client only (no direct VectorDB/LLM access)
+- [x] **Configuration Improvements**:
+  - Renamed StorageConfig → PersonaConfig for semantic clarity
+  - Fixed double unmarshal issue in MCP configuration
+  - Updated environment variable naming: server_endpoint → web_api_url
+- [x] **HTTP Client Implementation**: Complete Journal interface via HTTP API calls
+- [x] **Integration Testing**: Successfully deployed clean architecture with all services healthy
+- [x] **Documentation**: Updated README.md with Quick Start guide and VS Code integration
+
+**Production Ready for Claude Code Integration:**
+
+- [x] All Docker services running healthy
+- [x] MCP server connects to web server via HTTP (http://persistent-context-web:8543)
+- [x] VS Code configuration documented and ready for testing
+- [x] Clean separation: Claude Code → MCP → Web Server → {VectorDB, LLM}
+
+### Session 12: MCP Configuration Simplification - COMPLETED
+
+**Major Accomplishments:**
+
+- [x] **MCP Setup Simplification**: Removed complex containerized MCP server in favor of local binary execution
+- [x] **Configuration Updates**:
+  - Updated `.vscode/settings.json` to use `./server/bin/mcp` locally with `APP_MCP_WEB_API_URL=http://localhost:8543`
+  - Updated README.md with build instructions (`go build -o bin/mcp ./cmd/mcp/`) and VS Code setup
+  - Removed MCP service from docker-compose.yml for cleaner architecture
+- [x] **Docker Cleanup**: Removed orphaned containers and simplified stack to only essential services (Qdrant, Ollama, Web)
+- [x] **Documentation**: Added step-by-step build and configuration instructions for Claude Code integration
+
+**Ready for Testing:**
+
+- [ ] **Build MCP Binary**: `cd server && go build -o bin/mcp ./cmd/mcp/`
+- [ ] **Claude Code Integration**: Test memory capture, retrieval, and association discovery via VS Code
+- [ ] **Performance Validation**: Test memory scoring algorithms with real workloads
+- [ ] **Association Testing**: Validate automatic relationship discovery in actual usage
+
+**Advanced Persona Features**
+
+- [ ] Complete persona import/export with actual memory integration
+- [ ] Add persona versioning and branching capabilities
+- [ ] Implement persona merge capabilities
+- [ ] Create persona analysis and insights
+
+**Production Readiness**
+
+- [ ] Add comprehensive monitoring and metrics endpoints
+- [ ] Implement backup/restore capabilities for memory data
+- [ ] Create deployment documentation and scaling guidelines
+- [ ] Add security considerations and authentication planning
+
+**Advanced MCP Features**
+
+- [ ] Implement specialized sensors (file-watcher, git-monitor)
+- [ ] Create memory analysis and insights API
+- [ ] Add automated consolidation triggers based on usage patterns
+- [ ] Design memory visualization and reporting capabilities

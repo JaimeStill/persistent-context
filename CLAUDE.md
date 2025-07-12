@@ -93,3 +93,15 @@ This documentation flow is MANDATORY for every session and takes precedence over
 - **Context Documents**: Outside of core files (execution-plan.md, tasks.md, CLAUDE.md, README.md), all contextual and design documents should be stored in the `_context/` directory
 - **Design Documents**: Architecture decisions, design plans, and technical specifications belong in `_context/`
 - **Session Archives**: Completed execution plans are archived to `_context/sessions/`
+- **Source Documentation**: When asked for source code explanations or to describe complex technical concepts, create educational documentation in `.artifacts/source/` using incremental numbering (source-001.md, source-002.md, etc.). These documents should combine:
+  - **Conceptual Overview**: Simple explanations using analogies and plain language
+  - **Function-by-Function Breakdown**: Each component explained with purpose, responsibility, and design rationale
+  - **Complete Source Code**: Full implementation with detailed comments
+  - **Learning Context**: How concepts fit into larger architecture and key patterns demonstrated
+  - **Educational Value**: Focus on teaching complex concepts in accessible ways for future reference
+- **Technical Documentation (Post-MVP)**: Once the MVP is complete, create comprehensive technical documentation using the same educational approach. Structure documentation to enable incremental understanding from foundation to advanced concepts:
+  - **Bottom-Up Navigation**: Start with core types and interfaces, build up to higher-level systems
+  - **Source-Linked Descriptions**: Use relative paths and anchor tags to link directly to relevant code sections
+  - **Human and LLM Optimized**: Design for consumption by both humans (learning) and LLMs (context understanding)
+  - **Progressive Complexity**: Each layer builds on the previous, enabling step-by-step comprehension
+  - **No Embedded Code**: Descriptions reference actual source code rather than duplicating snippets

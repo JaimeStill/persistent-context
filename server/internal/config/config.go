@@ -22,7 +22,7 @@ type Config struct {
 	LLM           LLMConfig           `mapstructure:"llm"`
 	Journal       JournalConfig       `mapstructure:"journal"`
 	MCP           MCPConfig           `mapstructure:"mcp"`
-	Storage       StorageConfig       `mapstructure:"storage"`
+	Persona       PersonaConfig       `mapstructure:"persona"`
 	Consolidation ConsolidationConfig `mapstructure:"consolidation"`
 }
 
@@ -73,7 +73,7 @@ func (c *Config) loadPackageConfigs(v *viper.Viper) error {
 		&c.LLM,
 		&c.Journal,
 		&c.MCP,
-		&c.Storage,
+		&c.Persona,
 		&c.Consolidation,
 	}
 	
@@ -96,7 +96,7 @@ func setDefaults(v *viper.Viper) {
 		&LLMConfig{},
 		&JournalConfig{},
 		&MCPConfig{},
-		&StorageConfig{},
+		&PersonaConfig{},
 		&ConsolidationConfig{},
 	}
 	
@@ -118,7 +118,7 @@ func (c *Config) Validate() error {
 		&c.LLM,
 		&c.Journal,
 		&c.MCP,
-		&c.Storage,
+		&c.Persona,
 		&c.Consolidation,
 	}
 	
