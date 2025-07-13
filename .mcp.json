@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "persistent-context": {
+      "command": "persistent-context-mcp",
+      "args": [
+        "--stdio"
+      ]
+    }
+  }
+}

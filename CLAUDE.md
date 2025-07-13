@@ -35,8 +35,8 @@
 
 ### Build Standards
 
-- **Multi-Executable Build Output**: Always output Go builds to `bin/web` and `bin/mcp` for consistent .gitignore management
-- **Docker Build Path**: Use `bin/web` and `bin/mcp` as build targets in Dockerfiles
+- **Multi-Executable Build Output**: Always output Go builds to `bin/persistent-context-svc` and `bin/persistent-context-mcp` for consistent .gitignore management
+- **Docker Build Path**: Use `bin/persistent-context-svc` as build target in Dockerfile
 - **Binary Location**: Ensure all build scripts and processes use the standardized output paths for each executable
 
 ### Development Approach
@@ -44,6 +44,7 @@
 - Break down work into discrete, completable tasks
 - Maintain clear documentation of progress and decisions
 - Update this file with new directives as they are established
+- **Pre-Alpha Software**: This is pre-alpha software that hasn't been successfully executed yet. Don't leave deprecated code or try to worry about backwards compatibility. If something is determined to be obsolete, take the time to clean it out
 
 ### Testing and Validation
 
@@ -79,6 +80,17 @@ Every development session MUST follow this exact structure:
 - The execution plan serves as both progress tracker and handoff document
 
 This documentation flow is MANDATORY for every session and takes precedence over all other tasks.
+
+**Maintenance Session Process (For Bug Fixes and Small Tasks)**
+
+1. **Identify Issues**: Start with a prompt describing the problems that need to be resolved
+2. **Plan Maintenance**: Use plan mode to scope the maintenance work
+3. **Create Execution Plan**: Create execution-plan.md capturing the maintenance tasks
+4. **Execute Fixes**: Complete the maintenance tasks, updating execution-plan.md as work progresses
+5. **Append to Session**: Once complete, append the maintenance execution plan to the end of the most recent session-XXX.md file
+6. **Clean Up**: Remove execution-plan.md after successful appending
+
+This ensures maintenance context is immediately available during the next development session without additional directives.
 
 ### Configuration Management
 

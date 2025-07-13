@@ -1,0 +1,62 @@
+{
+  // Cross-platform terminal profile configuration for Claude Code MCP integration
+  // Ensures login shells are used to properly load environment variables
+  // This is required for MCP servers to find globally installed binaries
+  
+  "terminal.integrated.profiles.linux": {
+    "bash": {
+      "path": "/bin/bash",
+      "args": ["-l"],
+      "icon": "terminal-bash"
+    },
+    "zsh": {
+      "path": "/bin/zsh", 
+      "args": ["-l"],
+      "icon": "terminal"
+    }
+  },
+  
+  "terminal.integrated.profiles.osx": {
+    "bash": {
+      "path": "/bin/bash",
+      "args": ["-l"],
+      "icon": "terminal-bash"
+    },
+    "zsh": {
+      "path": "/bin/zsh",
+      "args": ["-l"],
+      "icon": "terminal"
+    }
+  },
+  
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "source": "PowerShell",
+      "icon": "terminal-powershell"
+    },
+    "Command Prompt": {
+      "path": [
+        "${env:windir}\\Sysnative\\cmd.exe",
+        "${env:windir}\\System32\\cmd.exe"
+      ],
+      "args": [],
+      "icon": "terminal-cmd"
+    },
+    "Git Bash": {
+      "path": ["C:\\Program Files\\Git\\bin\\bash.exe"],
+      "args": ["--login"],
+      "icon": "terminal-bash"
+    },
+    "WSL": {
+      "path": "wsl.exe",
+      "args": ["--login"],
+      "icon": "terminal-ubuntu"
+    }
+  },
+  
+  // Ensure environment inheritance for consistent behavior
+  "terminal.integrated.inheritEnv": true,
+  
+  // Enable shell integration for better command tracking
+  "terminal.integrated.shellIntegration.enabled": true
+}

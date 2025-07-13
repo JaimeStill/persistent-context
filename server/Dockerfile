@@ -16,8 +16,8 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o bin/app ./app/
+# Build the service server application
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o bin/persistent-context-svc ./cmd/persistent-context-svc/
 
 # Final stage
 FROM alpine:3.21
@@ -37,20 +37,20 @@ RUN mkdir -p /data/personas && \
 WORKDIR /app
 
 # Copy binary from builder stage
-COPY --from=builder /app/bin/app .
+COPY --from=builder /app/bin/persistent-context-svc .
 
 # Change ownership to non-root user
-RUN chown appuser:appgroup /app/app
+RUN chown appuser:appgroup /app/persistent-context-svc
 
 # Switch to non-root user
 USER appuser
 
 # Expose port
-EXPOSE 8080
+EXPOSE 8543
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+# Health check using /ready endpoint
+HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8543/ready || exit 1
 
 # Run the application
-CMD ["./app"]
+CMD ["./persistent-context-svc"]
