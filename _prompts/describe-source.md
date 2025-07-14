@@ -11,6 +11,7 @@ When you encounter a complex technical implementation that would benefit from ed
 **Request**: Create a source description for the proposed implementation following the educational documentation standards established in CLAUDE.md.
 
 **Requirements**:
+
 1. Store the documentation at `.artifacts/source/source-XXX.md` where XXX is the next sequential number
 2. Follow the format established in source-001.md:
    - **Overview**: Simple explanation using analogies and plain language
@@ -21,12 +22,14 @@ When you encounter a complex technical implementation that would benefit from ed
    - **Learning Points**: Educational value and future enhancement opportunities
 
 **Current Implementation Context**:
+
 - **File**: `[FILE_PATH]`
 - **Purpose**: `[BRIEF_DESCRIPTION]`
 - **Complexity Level**: `[HIGH/MEDIUM/LOW]`
 - **Key Concepts**: `[LIST_KEY_CONCEPTS]`
 
 **Specific Focus Areas**:
+
 - Explain any algorithms or mathematical concepts in simple terms
 - Use analogies to make complex systems relatable
 - Highlight design decisions and their rationale

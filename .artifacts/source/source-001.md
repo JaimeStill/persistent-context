@@ -7,6 +7,7 @@ The Enhanced Memory Scoring System is like a **smart librarian** for AI memories
 ### The Problem It Solves
 
 Imagine if your brain kept every single detail with equal importance - every random conversation, every important lesson, every mundane task. You'd be overwhelmed! The human brain naturally prioritizes:
+
 - Recent experiences (recency bias)
 - Frequently accessed memories (familiarity)
 - Emotionally significant events (importance)
@@ -91,6 +92,7 @@ func (ms *MemoryScorer) ScoreMemory(memory *types.MemoryEntry) types.MemoryScore
 **Analogy**: Like a restaurant critic who rates a restaurant by considering food quality, service, atmosphere, and value. Each factor contributes to the overall rating.
 
 **The Four Factors**:
+
 1. **Base Importance**: What type of memory is this? (skills vs random events)
 2. **Decay Factor**: How fresh is this memory? (recent vs old)
 3. **Access Frequency**: How often is this memory used? (popular vs forgotten)
@@ -122,6 +124,7 @@ func (ms *MemoryScorer) calculateDecayFactor(timeSinceAccess time.Duration) floa
 **Analogy**: Like how a newspaper becomes less relevant as days pass. Today's news is very important (decay factor = 1.0), yesterday's news is somewhat important (decay factor = 0.8), last week's news is barely relevant (decay factor = 0.2).
 
 **The Math Explained**:
+
 - Uses "exponential decay" - the same formula used for radioactive decay
 - Recent memories fade slowly, old memories fade quickly
 - `e^(-lambda * t)` means: as time (t) increases, importance decreases exponentially
@@ -166,6 +169,7 @@ func (ms *MemoryScorer) calculateBaseImportance(memory *types.MemoryEntry) float
 **Analogy**: Like how different types of books have different inherent value - a cookbook you use weekly is more valuable than a novel you read once, and a technical manual is more valuable than a magazine.
 
 **The Hierarchy**:
+
 1. **Semantic memories (1.5x)**: General knowledge, facts - "Python is a programming language"
 2. **Metacognitive memories (1.4x)**: Learning insights - "I learn better with examples"
 3. **Procedural memories (1.3x)**: Skills and procedures - "How to debug code"
@@ -199,6 +203,7 @@ func (ms *MemoryScorer) calculateCompositeScore(baseImportance, decayFactor floa
 **Analogy**: Like calculating a final grade where homework is 30%, tests are 50%, and participation is 20%. Each component contributes according to its configured weight.
 
 **The Formula Breakdown**:
+
 1. **Normalize access frequency**: Use logarithmic scaling so 100 accesses isn't 100x more important than 1 access
 2. **Apply weights**: Multiply each factor by its configured importance weight
 3. **Combine**: Add weighted factors together
@@ -244,6 +249,7 @@ func (ms *MemoryScorer) UpdateMemoryAccess(memory *types.MemoryEntry) {
 **Analogy**: Like YouTube tracking view counts and updating video recommendations based on popularity. More views = higher ranking in suggestions.
 
 **What Gets Updated**:
+
 1. **Access frequency**: +1 to the "popularity counter"
 2. **Last accessed time**: Updates the "freshness timestamp"  
 3. **Metadata**: Keeps backward compatibility with old tracking system
@@ -285,6 +291,7 @@ func (ms *MemoryScorer) GetTopScoredMemories(memories []*types.MemoryEntry, limi
 **Analogy**: Like creating a "greatest hits" playlist from your music library - score every song, sort by rating, return the top 20.
 
 **Process**:
+
 1. **Score everything**: Calculate importance for all memories
 2. **Sort by score**: Arrange from most to least important
 3. **Return top N**: Give back only the highest-scoring memories up to the limit
@@ -294,18 +301,23 @@ func (ms *MemoryScorer) GetTopScoredMemories(memories []*types.MemoryEntry, limi
 ## Key Design Patterns Demonstrated
 
 ### 1. **Separation of Concerns**
+
 Each function has one clear responsibility:
+
 - Scoring logic separated from access tracking
 - Different scoring factors calculated independently
 - Configuration separated from implementation
 
-### 2. **Configurable Behavior** 
+### 2. **Configurable Behavior**
+
 The system uses configuration values rather than hardcoded numbers, making it easy to tune without code changes.
 
 ### 3. **Backward Compatibility**
+
 New scoring system works alongside existing metadata-based tracking, allowing gradual migration.
 
 ### 4. **Feedback Loops**
+
 Access tracking automatically improves future scoring, creating a self-improving system.
 
 ## Integration with Memory Consolidation

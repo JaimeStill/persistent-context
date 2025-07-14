@@ -256,9 +256,11 @@ Following the core memory enhancement work, the session was extended to test and
 ## MAINTENANCE SESSION: MCP Server Integration Fix
 
 ### Session Type
+
 Maintenance
 
 ### Issues Resolved
+
 1. MCP server had type mismatch - expected journal.Journal but received http.Client
 2. MCP tools needed to properly expose HTTP API endpoints  
 3. MCP server was configured to access storage directly instead of via HTTP API
@@ -302,6 +304,7 @@ Maintenance
 ### Results
 
 **Architecture Changes:**
+
 - **Before**: MCP server → journal → vectordb/llm (direct access)
 - **After**: MCP server → HTTP client → web server → journal → vectordb/llm
 
@@ -309,12 +312,14 @@ Maintenance
 The MCP server now exposes **10 tools** that all use HTTP client:
 
 **High-level tools:**
+
 - `capture_event` - Capture events with metadata
 - `get_stats` - Get memory statistics  
 - `query_memory` - Search memories by similarity
 - `trigger_consolidation` - Trigger memory consolidation
 
 **Direct HTTP API tools:**
+
 - `capture_memory` - Direct memory capture
 - `get_memories` - Get recent memories
 - `get_memory_by_id` - Get specific memory
@@ -323,6 +328,7 @@ The MCP server now exposes **10 tools** that all use HTTP client:
 - `get_memory_stats` - Direct stats access
 
 **Clean Architecture:**
+
 - MCP server is now a thin HTTP client wrapper
 - All processing/filtering happens server-side
 - Clean separation of concerns
@@ -340,6 +346,7 @@ The MCP server now exposes **10 tools** that all use HTTP client:
 ### Problem Analysis
 
 **Root Cause**: Architectural mismatch between stdio communication pattern and generic Application framework:
+
 - `ServeStdio()` blocks main thread for stdio communication
 - Generic `app.Runner` expects non-blocking `Start()` methods  
 - Signal handlers interfere with stdio protocol
@@ -348,22 +355,26 @@ The MCP server now exposes **10 tools** that all use HTTP client:
 ### Solution Implemented
 
 **1. Removed Unnecessary Application Infrastructure**
+
 - Deleted `server/internal/app/mcp_runner.go` (specialized runner that wasn't needed)
 - Deleted `server/internal/app/mcp_app.go` (application wrapper adding complexity)
 - Removed dependency on `internal/app` package from MCP server
 
 **2. Simplified main.go Architecture**
+
 - Direct instantiation of: config, logger, HTTP client, MCP server
 - Clean stdio-focused implementation without signal handling complexity
 - Removed generic application lifecycle that didn't fit stdio pattern
 
 **3. Preserved Web Server Infrastructure**
+
 - Kept `app.go` and `web_app.go` (still used by web server)
 - Web server appropriately uses application pattern for complex lifecycle
 
 ### Verification Testing
 
 **Manual stdio Testing**:
+
 ```bash
 # Initialize test
 echo '{"id": "test", "method": "initialize", "params": {}}' | ./server/bin/mcp --stdio
@@ -377,6 +388,7 @@ echo '{"id": "test2", "method": "tools/list", "params": {}}' | ./server/bin/mcp 
 ### Documentation Updates
 
 **Added to README.md**:
+
 - Manual MCP server testing instructions
 - Expected responses for initialize and tools/list commands
 - Optional verification step before Claude Code integration
@@ -402,6 +414,7 @@ The MCP server now properly handles stdio communication and should connect succe
 **Root Cause**: The MCP server was immediately starting stdio communication without parsing command-line flags, causing it to block indefinitely waiting for JSON-RPC input on stdin.
 
 **Key Issues**:
+
 1. No command-line flag parsing in main.go
 2. Server ignored `--stdio` flag specified in `.mcp.json`
 3. Always started stdio mode, blocking on `decoder.Decode(&request)`
@@ -453,6 +466,7 @@ MCP server now properly handles command-line arguments and should connect succes
 **Root Cause**: Claude Code doesn't support relative paths in .mcp.json configurations, and generic binary names like `mcp` create potential conflicts.
 
 **Key Issues**:
+
 1. `.mcp.json` used relative path `./server/bin/mcp` which Claude Code cannot resolve
 2. Generic binary name `mcp` could conflict with other tools
 3. Inconsistent naming between web and MCP components
@@ -461,26 +475,31 @@ MCP server now properly handles command-line arguments and should connect succes
 ### Solution Implemented
 
 **1. Binary Renaming for Consistency**
+
 - Renamed `server/cmd/web` → `server/cmd/persistent-context-svc`
 - Renamed `server/cmd/mcp` → `server/cmd/persistent-context-mcp`
 - Updated all build paths to use new directory structure
 
 **2. Docker Infrastructure Cleanup**
+
 - Removed `server/Dockerfile.mcp` (MCP server runs locally only)
 - Renamed `server/Dockerfile.web` → `server/Dockerfile`
 - Updated `docker-compose.yml` service naming for consistency
 
 **3. Configuration Updates**
+
 - Updated `.mcp.json` to use `persistent-context-mcp` command
 - Updated `server/Dockerfile` build path: `./cmd/persistent-context-svc/`
 - Updated CLAUDE.md build standards with new binary names
 
 **4. PATH Configuration Setup**
+
 - Added Go PATH setup instructions to README.md prerequisites
 - Configured user's ~/.profile with `export PATH=$PATH:$HOME/go/bin`
 - Verified global command availability
 
 **5. Documentation Updates**
+
 - Updated README.md with proper build/install instructions
 - Added both local build and global install options
 - Added PATH setup prerequisites and troubleshooting notes
@@ -522,11 +541,13 @@ MCP server now uses explicit `persistent-context-mcp` binary name, is globally a
 ### Problem Analysis
 
 **Root Cause 1: JSON-RPC 2.0 Protocol Violations**
+
 - Missing required `jsonrpc: "2.0"` field in responses
 - Non-standard error codes not following JSON-RPC specifications
 - Incomplete request validation and error handling
 
 **Root Cause 2: VS Code Environment Inheritance**
+
 - Claude Code doesn't inherit interactive shell environment
 - VS Code terminals may not run as login shells by default
 - MCP servers inherit limited environment from Claude Code process
@@ -534,6 +555,7 @@ MCP server now uses explicit `persistent-context-mcp` binary name, is globally a
 ### Solutions Implemented
 
 **1. JSON-RPC 2.0 Protocol Compliance**
+
 - ✅ Added `jsonrpc: "2.0"` field to all Response structs
 - ✅ Implemented standardized JSON-RPC error codes (-32000 series)
 - ✅ Added comprehensive request validation (version, ID, method)
@@ -541,6 +563,7 @@ MCP server now uses explicit `persistent-context-mcp` binary name, is globally a
 - ✅ Added buffered I/O for reliable stdio communication
 
 **2. VS Code Workspace Environment Configuration**
+
 - ✅ Created `.vscode/settings.json` with cross-platform terminal profiles
 - ✅ Configured bash/zsh with `-l` (login) flag for Linux/macOS
 - ✅ Configured Git Bash and WSL with `--login` flag for Windows
@@ -548,6 +571,7 @@ MCP server now uses explicit `persistent-context-mcp` binary name, is globally a
 - ✅ Enabled `terminal.integrated.inheritEnv: true` and shell integration
 
 **3. Documentation Updates**
+
 - ✅ Updated README.md with VS Code terminal configuration explanation
 - ✅ Added environment troubleshooting section
 - ✅ Documented workspace convention for repository portability
@@ -555,11 +579,13 @@ MCP server now uses explicit `persistent-context-mcp` binary name, is globally a
 ### Technical Changes
 
 **Files Modified:**
+
 - `server/internal/mcp/server.go` - JSON-RPC 2.0 compliance and error handling
 - `.vscode/settings.json` - Cross-platform terminal profile configuration
 - `README.md` - Documentation of VS Code workspace conventions
 
 **Protocol Enhancements:**
+
 - Request/Response structs now fully JSON-RPC 2.0 compliant
 - Standardized error codes: ParseError (-32700), InvalidRequest (-32600), MethodNotFound (-32601), ServerError (-32000)
 - Buffered I/O with proper output flushing for reliable communication
@@ -574,6 +600,7 @@ MCP server now uses explicit `persistent-context-mcp` binary name, is globally a
 ### Next Steps
 
 **Repository Ready for Testing**: VS Code restart required to test environment inheritance
+
 1. Restart VS Code to apply `.vscode/settings.json` terminal configurations
 2. Launch Claude Code from repository root directory
 3. Test MCP server connection and tool functionality
@@ -638,11 +665,13 @@ func (s *Server) handleInitialize(req *Request) (*Response, error) {
 ### Fixed Response Format
 
 **Before**:
+
 ```json
 {"jsonrpc":"2.0","id":"1","result":{"name":"persistent-context-mcp","version":"1.0.0"}}
 ```
 
 **After**:
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -689,21 +718,25 @@ MCP server now fully complies with 2025 MCP specification. The 30-second timeout
 **Replaced custom implementation with `github.com/modelcontextprotocol/go-sdk/mcp` v0.2.0**
 
 **1. SDK Integration**
+
 - ✅ Added official MCP Go SDK dependency: `go get github.com/modelcontextprotocol/go-sdk@latest`
 - ✅ Updated go.mod with uritemplate dependency and ran `go mod tidy`
 
 **2. Server Architecture Refactoring**
+
 - ✅ Completely rewrote `server/internal/mcp/server.go` using official SDK patterns
 - ✅ Replaced custom JSON-RPC structs with SDK types (`mcp.Server`, `mcp.Tool`, etc.)
 - ✅ Migrated from custom `ServeStdio` to SDK's `server.Run(ctx, mcp.NewStdioTransport())`
 
 **3. Type-Safe Tool Registration**
+
 - ✅ Converted all 10 tools to use SDK's type-safe `AddTool` function
 - ✅ Created strongly-typed parameter structs with `mcp` tags for schema generation
 - ✅ Implemented `ToolHandlerFor[In, Out]` pattern for all tools
 - ✅ Added automatic JSON schema generation for input/output validation
 
 **4. Enhanced Tool Implementation**
+
 - ✅ **capture_event**: Type-safe with `CaptureEventParams` and `CaptureEventResult`
 - ✅ **get_stats**: Fixed `map[string]any` handling with proper type casting
 - ✅ **query_memory**: Pointer types for optional parameters (`*uint64`)
@@ -716,6 +749,7 @@ MCP server now fully complies with 2025 MCP specification. The 30-second timeout
 - ✅ **get_memory_stats**: Duplicate endpoint for API completeness
 
 **5. Fixed Type Issues**
+
 - ✅ Corrected `StructuredContent` field usage (removed erroneous `&` operators)
 - ✅ Fixed stats handling: `stats["total_memories"]` instead of `stats.TotalMemories`
 - ✅ Updated result types to use `map[string]any` for flexible JSON responses
@@ -723,6 +757,7 @@ MCP server now fully complies with 2025 MCP specification. The 30-second timeout
 ### Technical Improvements
 
 **SDK Benefits:**
+
 - **Proper Lifecycle Management**: SDK handles stdio connection persistence correctly
 - **Protocol Compliance**: Full MCP 2024-11-05 specification compliance
 - **Automatic Schema Generation**: Type-safe parameters generate JSON schemas automatically
@@ -730,6 +765,7 @@ MCP server now fully complies with 2025 MCP specification. The 30-second timeout
 - **Future-Proof**: Will track official MCP specification evolution
 
 **Architecture:**
+
 - **Before**: Custom JSON-RPC → Manual stdio → EOF exit
 - **After**: Official SDK → Persistent stdio transport → Proper connection lifecycle
 
@@ -758,13 +794,15 @@ MCP server now fully complies with 2025 MCP specification. The 30-second timeout
 ### SDK Migration Benefits
 
 **Production Ready**: Using official SDK means:
+
 - Battle-tested stdio lifecycle management
 - Proper MCP protocol implementation
 - Automatic capability negotiation
 - Future compatibility as SDK matures
 - Type safety and schema validation
 
-**Connection Stability**: 
+**Connection Stability**:
+
 - Eliminates 30-second timeout issues
 - Maintains persistent connections as expected by Claude Code  
 - Proper EOF and error handling built into transport layer
@@ -787,11 +825,13 @@ MCP server now uses official ModelContextProtocol Go SDK with proper stdio lifec
 ### MCP Tools Test Results Summary
 
 **✅ Fully Functional Tools (7/10)**:
+
 - `get_stats` & `get_memory_stats` - Memory statistics retrieval working
 - `capture_event` & `capture_memory` - Memory capture functionality operational
 - `query_memory` & `search_memories` - Memory search and retrieval working (found 10 memories)
 
 **❌ Backend Issues Requiring Attention (3/10)**:
+
 - `get_memories` - HTTP 500 error from web server backend
 - `trigger_consolidation` - HTTP 500 error during consolidation process
 - `consolidate_memories` - HTTP 404 errors for memory ID lookups
@@ -804,6 +844,7 @@ MCP server now uses official ModelContextProtocol Go SDK with proper stdio lifec
 ### Architecture Status
 
 **Current State**: Claude Code → Local MCP Binary → Web Server → {VectorDB, LLM}
+
 - ✅ **MCP Protocol**: Fully compliant with JSON-RPC 2.0 and MCP 2025 specification
 - ✅ **Communication Layer**: Official Go SDK ensuring robust stdio transport
 - ✅ **Tool Registration**: All 10 tools properly registered with type-safe parameters
@@ -821,17 +862,20 @@ MCP server now uses official ModelContextProtocol Go SDK with proper stdio lifec
 ### Updated Session 12+ Roadmap
 
 **Session 12 Priority (CRITICAL)**: Backend Stabilization
+
 - [ ] Debug and fix HTTP 500 errors in `get_memories` and `trigger_consolidation` endpoints
 - [ ] Investigate data consistency issues between stats and query results
 - [ ] Validate memory persistence from capture operations to storage layer
 - [ ] Test complete end-to-end memory workflow for data integrity
 
 **Session 13**: Production Validation (After Backend Fixes)
+
 - [ ] Test complete Claude Code integration with stable backend
 - [ ] Validate memory association discovery in real usage
 - [ ] Performance testing with actual workloads
 
 **Session 14+**: Advanced Features (Post-Stabilization)
+
 - [ ] Complete persona import/export integration
 - [ ] Advanced memory analysis and insights
 - [ ] Specialized MCP sensors and automation

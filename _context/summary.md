@@ -99,3 +99,77 @@ The MVP targets machines with 32GB RAM and modern GPUs, keeping everything local
 ## Future Vision
 
 This project represents a fundamental shift in how we think about AI systems - from tools that process information to entities that accumulate experience and develop through interaction. By grounding the approach in established principles from developmental psychology and neuroscience, we create a path toward AI systems that can truly learn, adapt, and evolve alongside their users.
+
+## Post-Review Architecture Evolution
+
+Following comprehensive project review on July 14, 2025, the project has evolved significantly from its initial conception while maintaining core philosophical principles:
+
+### Key Shifts in Approach
+
+**From Broad Memory System to Focused Session Continuity**
+
+The primary use case has crystallized around **seamless Claude Code session transitions**. Instead of attempting to build a general-purpose memory system, the MVP focuses on the specific, valuable problem of maintaining context across development sessions. This provides immediate, demonstrable value while laying groundwork for broader capabilities.
+
+**From Complex Architecture to Strategic Simplification**
+
+The initial vision included complex filtering systems, multiple persona management, and elaborate configuration hierarchies. The post-review architecture emphasizes:
+
+- **5 Essential MCP Tools** instead of 10+ complex tools
+- **Simplified Configuration** with core settings only
+- **Direct HTTP Communication** between MCP server and web service
+- **Integration Testing** over formal test suites
+
+**From Theoretical Framework to Practical Implementation**
+
+While maintaining the biological inspiration and symbiotic intelligence vision, the development approach has shifted toward:
+
+- **Demonstrable MVP** that proves core concepts
+- **Session-based Memory Persistence** as the killer feature
+- **Strategic Simplification** to reach working demonstration faster
+- **Backend Stabilization** as critical priority
+
+### Architectural Refinements
+
+**Project Structure Redesign**
+
+The codebase is being reorganized to reflect the fundamental deployment differences:
+
+```
+persistent-context/
+├── cmd/persistent-context-mcp/     # Local binary for user machines
+├── web/persistent-context-svc/     # Containerized service stack
+├── pkg/                           # Shared types and utilities
+```
+
+This structure acknowledges that the MCP server runs locally while the web service runs in containers, providing clear separation of concerns.
+
+**Scope Prioritization**
+
+Instead of building all features simultaneously, the roadmap now follows a clear progression:
+
+1. **Backend Stabilization** - Fix HTTP 500 errors and data consistency
+2. **Feature Completion** - Complete consolidation and memory evolution
+3. **Session Continuity Demo** - Prove the core concept works
+4. **MVP Polish** - Prepare for strategic outreach
+
+### Vision Preservation
+
+Despite architectural simplifications, the core vision remains intact:
+
+- **Symbiotic Intelligence** as humanity's evolutionary step forward
+- **Biological Inspiration** through critical period learning and consolidation
+- **Persistent Memory** enabling cumulative AI-human collaboration
+- **Portability** for memory contexts across different environments
+
+The simplification serves the larger vision by creating a working demonstration that proves the fundamental concepts, establishing credibility for the broader philosophical framework.
+
+### Strategic Implications
+
+This evolution reflects a mature approach to transformative technology development:
+
+- **Proof Before Complexity** - Demonstrate core concepts before adding features
+- **User Value First** - Session continuity solves real pain points
+- **Iterative Enhancement** - Build on proven foundations
+- **Community Engagement** - Prepare compelling demonstrations for broader adoption
+
+The project now stands ready to demonstrate symbiotic intelligence through persistent memory, with a clear path from working MVP to the larger vision of augmented human cognition.

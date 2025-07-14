@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Based on comprehensive research, an autonomous LLM memory consolidation system inspired by human critical period development (ages 0-7) can be effectively built using **Qdrant** for vector storage, **Phi-3 Mini** for local LLM consolidation, **MCP (Model Context Protocol)** for sensory inputs, and a **Go-based architecture** with hierarchical memory structures. The recommended approach combines biologically-inspired consolidation algorithms with practical engineering solutions that run efficiently on machines with 32GB RAM and NVIDIA RTX GPUs.
+Following comprehensive project review, this guide focuses on the **MVP approach** for building an autonomous LLM memory consolidation system. The system enables **seamless Claude Code session continuity** through persistent memory, using **Qdrant** for vector storage, **Phi-3 Mini** for local LLM consolidation, and **MCP (Model Context Protocol)** for context capture. The simplified architecture prioritizes demonstrable value through session-based memory persistence.
 
 ## Core Technology Stack and Documentation
 
@@ -82,70 +82,59 @@ func (c *OllamaClient) ConsolidateMemory(ctx context.Context, memories []string)
 }
 ```
 
-### MCP (Model Context Protocol) for Sensory Organs
+### MCP (Model Context Protocol) for Session Continuity
 
-**Why MCP**: Standardized protocol for tool integration, enables autonomous context capture without human intervention, growing ecosystem of pre-built servers.
+**Why MCP**: Standardized protocol for tool integration, enables seamless context capture across Claude Code sessions without manual intervention.
 
 **Official Documentation**: https://modelcontextprotocol.io/  
 **GitHub**: https://github.com/modelcontextprotocol/modelcontextprotocol
 
-**Go Implementation (mark3labs/mcp-go)**:
+**MVP Implementation (Official Go SDK)**:
 
 ```go
-import (
-    "github.com/mark3labs/mcp-go/mcp"
-    "github.com/mark3labs/mcp-go/server"
-)
+import "github.com/modelcontextprotocol/go-sdk/mcp"
 
 func main() {
-    s := server.NewMCPServer("Memory Monitor", "1.0.0")
+    server := mcp.NewServer("persistent-context-mcp", "1.0.0")
     
-    tool := mcp.NewTool("capture_context",
-        mcp.WithDescription("Capture context from environment"),
-        mcp.WithString("source", mcp.Required(), mcp.Description("Context source")),
-    )
+    // Essential tools for session continuity
+    server.AddTool("capture_memory", captureMemoryHandler)
+    server.AddTool("get_memories", getMemoriesHandler)
+    server.AddTool("trigger_consolidation", triggerConsolidationHandler)
+    server.AddTool("get_stats", getStatsHandler)
+    server.AddTool("search_memories", searchMemoriesHandler)
     
-    s.AddTool(tool, captureHandler)
-    server.ServeStdio(s)
+    server.Run(context.Background(), mcp.NewStdioTransport())
 }
 ```
 
-### Storage Architecture: Parquet + SQLite Hybrid
+### MVP Architecture: Simplified Storage
 
-**Why This Approach**: Parquet provides excellent compression for embeddings (4.2x ratio), SQLite offers ACID compliance for metadata, both are highly portable.
+**Current Implementation**: Direct integration with Qdrant and web service APIs
 
-**Implementation Structure**:
+**Project Structure**:
 
 ```
-Persona/
-├── metadata.db (SQLite - persona metadata, version info)
-├── episodic/
-│   └── embeddings.parquet (compressed episode vectors)
-├── semantic/
-│   └── concepts.parquet (conceptual knowledge)
-├── procedural/
-│   └── patterns.parquet (behavioral patterns)
-└── metacognitive/
-    └── insights.json (learning strategies)
+persistent-context/
+├── cmd/persistent-context-mcp/     # Local MCP binary
+├── web/persistent-context-svc/     # Containerized web service
+├── pkg/                           # Shared types and utilities
+└── docker-compose.yml             # Service stack
 ```
 
-### Claude Code Hooks Integration
+### Claude Code MCP Integration
 
-**Documentation**: Settings in `~/.claude/settings.json`  
-**Purpose**: Automate memory capture during development sessions
+**Configuration**: `.mcp.json` in repository root
+**Purpose**: Enable automatic context capture and retrieval across sessions
 
-**Example Hook Configuration**:
+**Example Configuration**:
 
 ```json
 {
-  "hooks": {
-    "PostToolUse": [{
-      "matcher": "Edit",
-      "hooks": [{
-        "type": "command",
-        "command": "curl -X POST http://localhost:8080/api/capture-memory -d '$CLAUDE_TOOL_OUTPUT'"
-      }]
-    }]
+  "command": "persistent-context-mcp",
+  "args": ["--stdio"],
+  "env": {
+    "APP_MCP_WEB_API_URL": "http://localhost:8543"
   }
 }
 ```
@@ -215,175 +204,161 @@ func (mce *MemoryConsolidationEngine) SleepCycle(ctx context.Context) {
 }
 ```
 
-## MVP Implementation Plan
+## MVP Implementation Plan (Revised)
 
-### Phase 1: Core Infrastructure (Week 1-2)
+### Session 12: Project Layout Refactor + Simplification (4-5 hours)
 
-1. **Set up Qdrant** with Docker and configure memory-mapped storage
-2. **Install Ollama** with Phi-3 Mini for local LLM processing  
-3. **Create Go project** structure with basic memory types
-4. **Implement chromem-go** for embedded vector operations during development
+1. **Restructure Project Architecture**
+   - Move MCP server to `cmd/persistent-context-mcp/`
+   - Move web service to `web/persistent-context-svc/`
+   - Create `pkg/` for shared components
+   - Update all imports and build processes
 
-### Phase 2: Memory Pipeline (Week 3-4)
+2. **Simplify to Essential Features**
+   - Reduce MCP tools to 5 essential ones
+   - Remove complex configuration systems
+   - Eliminate unused endpoints and features
+   - Focus on core memory loop functionality
 
-```go
-package main
+### Session 13: Backend Stabilization (3-4 hours)
 
-import (
-    "github.com/philippgille/chromem-go"
-    "github.com/qdrant/go-client/qdrant"
-)
+1. **Fix Critical HTTP Errors**
+   - Debug and resolve HTTP 500 errors in journal endpoints
+   - Fix data consistency issues (stats vs query results)
+   - Ensure memory persistence works end-to-end
 
-type AutonomousMemorySystem struct {
-    vectorDB       *qdrant.Client
-    localLLM       *OllamaClient
-    embeddingModel *chromem.EmbeddingFunc
-    mcpServers     map[string]*MCPServer
-}
+2. **Validate Core Operations**
+   - Test complete memory capture → storage → retrieval cycle
+   - Verify consolidation engine executes without errors
+   - Ensure MCP tools work with stabilized backend
 
-func (ams *AutonomousMemorySystem) StartAutonomousCapture() {
-    // Start MCP servers as "sensory organs"
-    go ams.startFileWatcher()
-    go ams.startAPIMonitor()
-    go ams.startGitMonitor()
-    
-    // Start consolidation loop
-    go ams.consolidationLoop()
+### Session 14: Backend Feature Completion (3-4 hours)
+
+1. **Complete Consolidation System**
+   - Implement missing consolidation triggers
+   - Complete memory scoring and decay algorithms
+   - Ensure association tracking functions properly
+
+2. **Memory Evolution Features**
+   - Test memory transformation from episodic to semantic
+   - Validate persona can capture session context
+   - Verify memory evolution over time
+
+### Session 15: Core Loop Demonstration (2-3 hours)
+
+1. **End-to-End Workflow**
+   - Demonstrate complete memory lifecycle
+   - Show session continuity across Claude Code restarts
+   - Validate memory associations and retrieval
+
+2. **Session Continuity Proof**
+   - Session 1: Capture context and memories
+   - Exit and restart Claude Code
+   - Session 2: Retrieve and build on previous context
+
+### Session 16: MVP Polish & Launch Preparation (3-4 hours)
+
+1. **Documentation and Guides**
+   - Create comprehensive README with quickstart
+   - Document session continuity use case
+   - Prepare deployment instructions
+
+2. **Demo and Outreach Materials**
+   - Record demo video showing session continuity
+   - Write technical blog post with philosophical framework
+   - Prepare materials for strategic outreach
+
+## Quickstart: MVP Setup
+
+### 1. Start Web Service Stack
+
+```bash
+# Clone and navigate to project
+git clone <repository-url>
+cd persistent-context
+
+# Start containerized services
+docker-compose up -d
+
+# Verify services are running
+curl http://localhost:8543/health
+```
+
+### 2. Build and Install MCP Server
+
+```bash
+# Build MCP binary
+go build -o bin/persistent-context-mcp ./cmd/persistent-context-mcp/
+
+# Install globally (recommended)
+go install ./cmd/persistent-context-mcp/
+
+# Verify installation
+persistent-context-mcp --help
+```
+
+### 3. Configure Claude Code
+
+Ensure `.mcp.json` is configured in your repository root:
+
+```json
+{
+  "command": "persistent-context-mcp",
+  "args": ["--stdio"]
 }
 ```
 
-### Phase 3: Consolidation Algorithms (Week 5-6)
+### 4. Test Session Continuity
 
-Implement the core consolidation patterns:
+1. **Start Claude Code** in your project directory
+2. **Work on code** - context is automatically captured
+3. **Exit Claude Code** - memories persist in web service
+4. **Restart Claude Code** - previous context is restored
+5. **Continue working** - build on previous session knowledge
 
-- Episodic → Semantic transformation
-- Forgetting curve application
-- Hierarchical memory organization
-- Dynamic retrieval based on context
+## Testing Philosophy
 
-### Phase 4: Portability Features (Week 7-8)
+### Integration Testing Approach
 
-Implement persona export/import:
+**Philosophy**: Validate actual functionality through running systems rather than formal test suites.
 
-```go
-func (ams *AutonomousMemorySystem) ExportPersona(path string) error {
-    // Export to Parquet + SQLite format
-    persona := &Persona{
-        Metadata:    ams.gatherMetadata(),
-        Episodic:    ams.exportEpisodicMemories(),
-        Semantic:    ams.exportSemanticKnowledge(),
-        Procedural:  ams.exportProceduralPatterns(),
-    }
-    
-    return persona.SaveToPath(path)
-}
+**Build Process**:
+```bash
+# Start the stack
+docker-compose up -d
+
+# Install MCP binary
+go install ./cmd/persistent-context-mcp/
+
+# Manual verification through Claude Code interaction
 ```
 
-## Quickstart Example: Minimal Working System
-
-```go
-package main
-
-import (
-    "context"
-    "log"
-    "time"
-    
-    "github.com/philippgille/chromem-go"
-)
-
-func main() {
-    // Initialize embedded vector DB
-    db := chromem.NewDB()
-    collection, err := db.CreateCollection("memories", nil, nil)
-    if err != nil {
-        log.Fatal(err)
-    }
-    
-    // Create memory system
-    ms := &MemorySystem{
-        collection: collection,
-        llmClient:  NewOllamaClient("http://localhost:11434"),
-    }
-    
-    // Start autonomous capture
-    ctx := context.Background()
-    go ms.CaptureLoop(ctx)
-    
-    // Start consolidation
-    go ms.ConsolidateLoop(ctx)
-    
-    // Keep running
-    select {}
-}
-
-type MemorySystem struct {
-    collection *chromem.Collection
-    llmClient  *OllamaClient
-}
-
-func (ms *MemorySystem) CaptureLoop(ctx context.Context) {
-    ticker := time.NewTicker(1 * time.Minute)
-    for range ticker.C {
-        // Capture context from environment
-        context := ms.gatherContext()
-        
-        // Store as episodic memory
-        ms.collection.AddDocuments(ctx, []chromem.Document{{
-            ID:       generateID(),
-            Content:  context,
-            Metadata: map[string]any{"type": "episodic", "timestamp": time.Now()},
-        }}, 1)
-    }
-}
-
-func (ms *MemorySystem) ConsolidateLoop(ctx context.Context) {
-    ticker := time.NewTicker(1 * time.Hour)
-    for range ticker.C {
-        // Query recent memories
-        results, _ := ms.collection.Query(ctx, "recent experiences", 100, nil, nil)
-        
-        // Consolidate with LLM
-        consolidated, _ := ms.llmClient.Consolidate(results)
-        
-        // Store as semantic memory
-        ms.collection.AddDocuments(ctx, []chromem.Document{{
-            ID:       generateID(),
-            Content:  consolidated,
-            Metadata: map[string]any{"type": "semantic", "timestamp": time.Now()},
-        }}, 1)
-    }
-}
-```
+**Validation Strategy**:
+- Clear indicators of success (logs, stats endpoints)
+- Manual verification through actual usage
+- Focus on complete workflows rather than isolated units
 
 ## Performance Considerations
 
-### Resource Usage
+### MVP Resource Usage
 
 - **Phi-3 Mini (4-bit)**: ~1.8GB VRAM, 25-40 tokens/second on RTX 2080
 - **Qdrant**: ~135MB RAM for 1M vectors with memory-mapped storage
-- **MCP Servers**: 5-20MB per server
-- **Go Process**: ~100MB base + data structures
+- **MCP Server**: ~5-20MB per process
+- **Web Service**: ~100MB base + data structures
 
-### Optimization Strategies
+### Scaling Considerations
 
-1. Use memory-mapped files for large vector storage
-2. Implement chunked processing for 2TB+ data
-3. Apply compression (4-bit quantization, Parquet format)
-4. Use worker pools for concurrent processing
-
-## Scaling Path
-
-1. **MVP**: Chromem-go + Ollama + file-based storage
-2. **Growth**: Migrate to Qdrant cluster + dedicated GPU server
-3. **Enterprise**: Distributed Qdrant + multiple LLM instances + Kubernetes orchestration
+1. **MVP**: Current architecture with Docker Compose
+2. **Growth**: Dedicated GPU server for LLM processing
+3. **Enterprise**: Distributed Qdrant + multiple LLM instances
 
 ## Key Recommendations
 
-1. **Start Simple**: Use chromem-go for initial development, migrate to Qdrant when scaling
-2. **Biological Inspiration**: Implement sleep-like consolidation cycles every 6 hours
-3. **Hierarchical Storage**: Maintain four distinct memory types with different retention policies
-4. **Autonomous Operation**: Use MCP servers as "sensory organs" for continuous context capture
-5. **Portable Format**: Parquet + SQLite ensures easy persona transfer between instances
+1. **Focus on Session Continuity**: Prove core concept before expanding features
+2. **Simplify Architecture**: Minimize complexity while maintaining functionality
+3. **Integration Testing**: Validate through actual usage rather than formal testing
+4. **Biological Inspiration**: Maintain hierarchical memory concepts in implementation
+5. **Demonstrable Value**: Prioritize features that show immediate benefit
 
-This architecture provides a solid foundation for an autonomous LLM memory consolidation system that can grow from a simple MVP to a production-scale solution handling terabytes of memories while maintaining human-like learning patterns.
+This simplified architecture provides a solid foundation for demonstrating autonomous LLM memory consolidation, focusing on session continuity as the primary use case while maintaining the ability to scale toward the broader vision of symbiotic intelligence.

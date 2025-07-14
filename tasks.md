@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the first 3 development sessions for building the Autonomous LLM Memory Consolidation System. Each session is designed to fit within approximately 1 hour of focused work.
+This document outlines the development roadmap for building the Autonomous LLM Memory Consolidation System. The roadmap has been revised following comprehensive project review to focus on MVP delivery through strategic simplification and backend stabilization.
 
 ## Session 1: Core Infrastructure Setup - COMPLETED
 
@@ -385,56 +385,150 @@ This document outlines the first 3 development sessions for building the Autonom
 
 ### Session 11: Enhanced Memory System & MCP Integration - COMPLETED ✅
 
-**🎉 MAJOR MILESTONE ACHIEVED**: Complete MCP Tools Integration with Claude Code
+**MAJOR MILESTONE ACHIEVED**: Complete MCP Tools Integration with Claude Code
 
 **Architecture Status**: Claude Code → Local MCP Binary → Web Server → {VectorDB, LLM}
+
 - ✅ **MCP Protocol**: Fully compliant with JSON-RPC 2.0 and MCP 2025 specification  
 - ✅ **Communication**: All 10 MCP tools connected and responding (7/10 fully functional)
 - ✅ **SDK Integration**: Official Go SDK ensuring robust stdio transport
 - ❌ **Backend Stability**: HTTP 500 errors requiring immediate attention
 
 **MCP Tools Status**:
+
 - ✅ Working: `get_stats`, `capture_event`, `capture_memory`, `query_memory`, `search_memories`
 - ❌ Backend Issues: `get_memories`, `trigger_consolidation`, `consolidate_memories`
 - ⚠️ Data Consistency: Query finds 10 memories while stats report 0 total
 
-### Session 12: Backend Stabilization - CRITICAL PRIORITY
+## Post-Review Revised MVP Roadmap
 
-**BEFORE ANY NEW FEATURES**: Backend stability issues must be resolved
+Following comprehensive project review on July 14, 2025, the roadmap has been refined to focus on delivering a demonstrable MVP through strategic simplification and backend stabilization.
 
-**Critical Tasks**:
-- [ ] **Debug HTTP 500 Errors**: Fix `get_memories` and `trigger_consolidation` endpoints
-- [ ] **Data Consistency Investigation**: Resolve stats vs query result mismatch  
-- [ ] **Memory Persistence Validation**: Ensure capture operations properly store data
-- [ ] **API Endpoint Testing**: Verify all journal HTTP endpoints handle errors correctly
-- [ ] **End-to-End Workflow Validation**: Test complete memory capture → storage → retrieval cycle
+### Session 12: Project Layout Refactor + Simplification (4-5 hours)
 
-### Session 13: Production Validation - AFTER Backend Stabilization
-
-**Prerequisites**: Session 12 backend issues resolved
+**Objective**: Restructure project architecture and eliminate non-essential complexity for MVP focus.
 
 **Tasks**:
-- [ ] **Claude Code Integration Testing**: Validate complete memory workflow via VS Code
-- [ ] **Association Discovery Testing**: Test automatic relationship detection in real usage  
-- [ ] **Performance Validation**: Test memory scoring algorithms with actual workloads
-- [ ] **End-to-End Integration**: Validate complete persistent context system
 
-### Future Advanced Features - POST-STABILIZATION
+1. **Create New Directory Structure**
+   - [ ] Move MCP server to `cmd/persistent-context-mcp/` with `cmd/internal/`
+   - [ ] Move web service to `web/persistent-context-svc/` with `web/internal/`
+   - [ ] Create `pkg/` for shared packages (types, config, logger)
+   - [ ] Update all imports and build paths
 
-**Advanced Persona Features**:
-- [ ] Complete persona import/export with actual memory integration
-- [ ] Add persona versioning and branching capabilities
-- [ ] Implement persona merge capabilities
-- [ ] Create persona analysis and insights
+2. **Scope Reduction**
+   - [ ] Reduce MCP tools to 4-5 essential ones:
+     - `capture_memory` (core capture)
+     - `get_memories` (session continuity)
+     - `trigger_consolidation` (memory evolution)
+     - `get_stats` (validation)
+     - `search_memories` (continuity demo)
+   - [ ] Remove placeholder endpoints and unused features
+   - [ ] Simplify configuration to essential settings
+   - [ ] Eliminate unnecessary abstractions
 
-**Production Readiness**:
-- [ ] Add comprehensive monitoring and metrics endpoints
-- [ ] Implement backup/restore capabilities for memory data
-- [ ] Create deployment documentation and scaling guidelines
-- [ ] Add security considerations and authentication planning
+3. **Verification**
+   - [ ] Ensure both binaries build correctly
+   - [ ] Test docker-compose stack with new structure
+   - [ ] Validate MCP server connects to web service
 
-**Advanced MCP Features**:
-- [ ] Implement specialized sensors (file-watcher, git-monitor)
-- [ ] Create memory analysis and insights API
-- [ ] Add automated consolidation triggers based on usage patterns
-- [ ] Design memory visualization and reporting capabilities
+### Session 13: Backend Stabilization (3-4 hours)
+
+**Objective**: Fix critical backend issues preventing core memory loop demonstration.
+
+**Tasks**:
+
+1. **Debug HTTP 500 Errors**
+   - [ ] Fix `get_memories` endpoint failures
+   - [ ] Resolve `trigger_consolidation` endpoint issues
+   - [ ] Address `consolidate_memories` endpoint problems
+
+2. **Data Consistency Resolution**
+   - [ ] Investigate stats vs query result mismatch (0 vs 10 memories)
+   - [ ] Ensure memory persistence from capture to storage
+   - [ ] Validate consolidation engine can execute without errors
+
+3. **End-to-End Validation**
+   - [ ] Test complete memory capture → storage → retrieval cycle
+   - [ ] Verify all journal HTTP endpoints handle errors correctly
+   - [ ] Ensure MCP tools work with stabilized backend
+
+### Session 14: Backend Feature Completion (3-4 hours)
+
+**Objective**: Complete remaining backend features needed for full memory loop demonstration.
+
+**Tasks**:
+
+1. **Consolidation System Completion**
+   - [ ] Implement missing consolidation triggers
+   - [ ] Complete memory decay/scoring algorithms
+   - [ ] Ensure association tracking functions properly
+
+2. **Memory Evolution Features**
+   - [ ] Validate persona can capture session context
+   - [ ] Test memory evolution over time
+   - [ ] Ensure semantic memory formation works
+
+3. **Integration Testing**
+   - [ ] Test complete consolidation workflow
+   - [ ] Verify memory associations are created and queryable
+   - [ ] Validate memory scoring influences retrieval
+
+### Session 15: Core Loop Demonstration (2-3 hours)
+
+**Objective**: Demonstrate complete memory system functionality with session continuity.
+
+**Tasks**:
+
+1. **Full Memory Workflow**
+   - [ ] Demonstrate: capture → consolidate → retrieve
+   - [ ] Show memory evolution from episodic to semantic
+   - [ ] Validate association tracking across memories
+
+2. **Session Continuity Proof**
+   - [ ] Claude Code session 1: Create and capture memories
+   - [ ] Exit and restart Claude Code
+   - [ ] Session 2: Retrieve and build on previous memories
+   - [ ] Demonstrate seamless context preservation
+
+3. **Memory Evolution Visualization**
+   - [ ] Show memory consolidation cycles in action
+   - [ ] Demonstrate semantic knowledge formation
+   - [ ] Validate persona context preservation
+
+### Session 16: MVP Polish & Launch Preparation (3-4 hours)
+
+**Objective**: Prepare polished MVP for strategic outreach and demonstration.
+
+**Tasks**:
+
+1. **Documentation & Guides**
+   - [ ] Create comprehensive README with quickstart guide
+   - [ ] Document session continuity use case
+   - [ ] Prepare deployment instructions
+
+2. **Demo Materials**
+   - [ ] Record compelling demo video showing session continuity
+   - [ ] Create visual demonstration of memory evolution
+   - [ ] Prepare philosophical framework presentation
+
+3. **Strategic Outreach Preparation**
+   - [ ] Write technical blog post draft
+   - [ ] Prepare strategic materials for Anthropic outreach
+   - [ ] Create project showcase materials
+
+## Success Metrics
+
+- **Technical**: Working demonstration of memory persistence across Claude Code sessions
+- **Philosophical**: Proof of concept for symbiotic intelligence through persistent memory
+- **Strategic**: Compelling materials ready for broader AI research community engagement
+
+## Testing Philosophy
+
+**Approach**: Integration testing with simple build process
+
+- `docker-compose up -d` - Start the stack
+- `go install ./cmd/persistent-context-mcp/` - Install MCP binary
+- Manual verification through Claude Code interaction
+
+**Focus**: Validate actual functionality rather than formal test coverage

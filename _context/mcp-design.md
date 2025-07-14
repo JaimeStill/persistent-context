@@ -2,9 +2,9 @@
 
 ## Overview
 
-The MCP (Model Context Protocol) server acts as a bridge between Claude Code and the persistent-context memory system. It captures relevant interactions and stores them as memories for later retrieval and consolidation.
+The MCP (Model Context Protocol) server acts as a bridge between Claude Code and the persistent-context memory system. It enables seamless session continuity by capturing relevant interactions and storing them as memories for later retrieval and consolidation.
 
-## Architecture
+## MVP Architecture (Post-Review Simplified)
 
 ### Deployment Model
 
@@ -15,306 +15,148 @@ The MCP (Model Context Protocol) server acts as a bridge between Claude Code and
 ### Communication Flow
 
 ```
-Claude Code <--stdio--> MCP Server <--HTTP--> Journal API <---> Vector DB
+Claude Code <--stdio--> MCP Server <--HTTP--> Web Service <---> {VectorDB, LLM}
 ```
 
-## Configuration System
+### Project Structure (Refactored)
 
-### Hierarchical Configuration
+```
+persistent-context/
+├── cmd/
+│   ├── persistent-context-mcp/     # Local MCP binary
+│   │   └── main.go
+│   └── internal/                   # MCP-specific internals
+│       ├── config/                 # MCP configuration
+│       └── client/                 # HTTP client to web service
+├── web/
+│   ├── persistent-context-svc/     # Containerized web service
+│   │   └── main.go
+│   └── internal/                   # Web-specific internals
+│       ├── journal/               # Journal implementation
+│       └── http/                  # HTTP server
+├── pkg/                           # Shared packages
+│   ├── types/                     # Common types
+│   ├── config/                    # Shared config
+│   └── logger/                    # Shared logging
+└── docker-compose.yml             # Web service stack
+```
 
-The MCP server supports a hierarchical configuration system that merges settings from multiple sources, with later sources overriding earlier ones:
+## Primary Use Case: Session Continuity
 
-1. **Built-in Defaults** (Embedded in code)
-2. **System Configuration** (`/etc/persistent-context/config.yaml`)
-3. **User Configuration** (`~/.config/persistent-context/config.yaml`)
-4. **Workspace Configuration** (`.persistent-context/config.yaml` in project root)
-5. **Environment Variables** (PC_* prefix)
-6. **Command-line Arguments** (Highest priority)
+The MCP server enables seamless transitions between Claude Code sessions by:
+1. Capturing context during active coding sessions
+2. Storing memories persistently across session boundaries
+3. Retrieving relevant context when Claude Code restarts
+4. Building cumulative knowledge over time
 
-### Configuration File Structure
+## Essential MCP Tools (Simplified)
+
+For MVP focus, the MCP server provides 5 essential tools:
+
+1. **`capture_memory`** - Core memory capture functionality
+   - Captures context with metadata
+   - Stores memories for future retrieval
+   - Essential for session continuity
+
+2. **`get_memories`** - Memory retrieval for session continuity
+   - Retrieves recent memories
+   - Enables context restoration across sessions
+   - Supports pagination for large memory sets
+
+3. **`trigger_consolidation`** - Demonstrate memory evolution
+   - Triggers consolidation of episodic memories
+   - Shows transformation to semantic knowledge
+   - Demonstrates learning over time
+
+4. **`get_stats`** - Validation and monitoring
+   - Provides memory statistics
+   - Validates system health
+   - Monitors memory growth and consolidation
+
+5. **`search_memories`** - Enhanced continuity demonstration
+   - Searches memories by content similarity
+   - Enables context-aware retrieval
+   - Supports session-specific queries
+
+## Configuration System (Simplified)
+
+### Essential Configuration
+
+For MVP, configuration focuses on core functionality:
 
 ```yaml
-# Main configuration
-mcp:
-  server_endpoint: "http://localhost:8080"
-  capture_mode: "balanced"                  # Can reference a profile
-  profiles_dir: "~/.config/persistent-context/profiles"  # Additional profiles location
-  
-  # Include other configuration files
-  includes:
-    - "~/.config/persistent-context/mcp-custom.yaml"
-    - ".persistent-context/mcp-local.yaml"
-
-# Persona configuration
-persona:
-  storage_type: "local"                     # local, s3, gcs, azure
-  local:
-    base_path: "~/.local/share/persistent-context/personas"
-    active_persona: "default"
-    auto_export: true
-    export_format: "parquet"                # parquet, sqlite, json
-    
-  # Future: Cloud storage configuration
-  # s3:
-  #   bucket: "my-personas"
-  #   region: "us-west-2"
-  #   prefix: "personas/"
+# Essential MCP configuration
+web_api_url: "http://localhost:8543"
+capture_mode: "balanced"
+consolidation_threshold: 100
+timeout_seconds: 30
 ```
 
-### Profile System
+### Environment Variables
 
-#### Profile Locations
-
-Profiles are loaded from multiple locations in order:
-
-1. **Built-in Profiles** (Embedded in binary)
-2. **System Profiles** (`/etc/persistent-context/profiles/*.yaml`)
-3. **User Profiles** (`~/.config/persistent-context/profiles/*.yaml`)
-4. **Workspace Profiles** (`.persistent-context/profiles/*.yaml`)
-
-#### Profile File Format
-
-```yaml
-# ~/.config/persistent-context/profiles/research-mode.yaml
-name: "research-mode"
-description: "Optimized for code exploration and research"
-base: "balanced"                          # Inherit from another profile
-
-# Override specific settings
-debounce_multiplier: 0.5                 # Faster captures during research
-filter_rules:
-  file_operations:
-    min_change_size: 10                   # Capture smaller changes
-    include_patterns:
-      - "**/*.md"                         # Always capture documentation
-      - "**/*.go"
-      - "**/*.py"
-      - "**/*.js"
-      - "**/*.ts"
-    
-  command_execution:
-    capture_patterns:
-      - ".*"                              # Capture all command output
-    max_output_lines: 10000               # Higher limit for research
-    
-  search_operations:
-    max_results: 100                      # More results during exploration
-    batch_window_ms: 60000                # Longer window for research sessions
-
-# Custom scoring weights for this profile
-scoring_weights:
-  recency: 0.3
-  frequency: 0.2
-  relevance: 0.5                          # Higher relevance weight for research
+```bash
+# Core MCP settings (using APP_ prefix)
+APP_MCP_WEB_API_URL=http://localhost:8543
+APP_MCP_TIMEOUT=30s
+APP_MCP_NAME=persistent-context-mcp
+APP_MCP_VERSION=1.0.0
 ```
 
-## Capture Strategy
+## Build and Installation
 
-### Event Types
+### Build MCP Binary
 
-1. **File Operations**
-   - `file_read`: Reading file contents
-   - `file_write`: Creating or modifying files
-   - `file_delete`: Removing files
-   
-2. **Command Execution**
-   - `command_run`: Bash command execution
-   - `command_output`: Command results (filtered)
-   
-3. **Search Operations**
-   - `search_query`: Grep/find operations
-   - `search_results`: Relevant findings
+```bash
+# Build locally
+go build -o bin/persistent-context-mcp ./cmd/persistent-context-mcp/
 
-### Capture Filtering System
-
-The capture filtering system is designed to be highly flexible and configurable through profiles and rules.
-
-#### Filter Rules Structure
-
-```yaml
-filter_rules:
-  file_operations:
-    min_change_size: 50          # Minimum lines changed to trigger capture
-    debounce_ms: 2000           # Quiet period before capture
-    ignore_patterns:            # Glob patterns to ignore
-      - "*.tmp"
-      - "*.log"
-      - "node_modules/**"
-      - ".git/**"
-    include_patterns:           # Explicit include patterns (override ignores)
-      - "*.md"
-      - "*.go"
-    max_file_size: 5242880      # 5MB default
-    
-  command_execution:
-    capture_errors: true        # Always capture error outputs
-    capture_patterns:           # Regex patterns to capture
-      - "^(ERROR|FAIL|PANIC)"
-      - "test.*failed"
-      - "build.*error"
-    ignore_patterns:            # Regex patterns to ignore
-      - "^\\+"                  # Git diff additions
-      - "^-"                    # Git diff deletions
-    max_output_lines: 5000      # Default 5000 lines
-    
-  search_operations:
-    min_results: 1              # Minimum results to capture
-    max_results: 50             # Maximum results to capture
-    batch_window_ms: 30000      # Group searches within window
+# Install globally
+go install ./cmd/persistent-context-mcp/
 ```
 
-### Built-in Capture Mode Profiles
+### Start Web Service Stack
 
-1. **Conservative** (Default)
-   ```yaml
-   name: "conservative"
-   debounce_multiplier: 2.5
-   filter_strictness: "high"
-   capture_threshold: 0.8
-   ```
-
-2. **Balanced**
-   ```yaml
-   name: "balanced"
-   debounce_multiplier: 1.0
-   filter_strictness: "medium"
-   capture_threshold: 0.5
-   ```
-
-3. **Aggressive**
-   ```yaml
-   name: "aggressive"
-   debounce_multiplier: 0.25
-   filter_strictness: "low"
-   capture_threshold: 0.2
-   ```
-
-## Persona Management
-
-### Local Storage Structure
-
-```
-~/.local/share/persistent-context/personas/
-├── default/
-│   ├── metadata.yaml           # Persona metadata
-│   ├── memories.parquet       # Vector embeddings and content
-│   ├── journal.db             # SQLite for structured data
-│   └── checkpoints/           # Version snapshots
-│       ├── 2024-01-15_123456.tar.gz
-│       └── 2024-01-16_091234.tar.gz
-├── work/
-│   ├── metadata.yaml
-│   ├── memories.parquet
-│   └── journal.db
-└── research/
-    ├── metadata.yaml
-    ├── memories.parquet
-    └── journal.db
+```bash
+# Start containerized services
+docker-compose up -d
 ```
 
-### Persona Metadata Format
+### Verify Connection
 
-```yaml
-# metadata.yaml
-name: "default"
-created_at: "2024-01-15T12:34:56Z"
-updated_at: "2024-01-16T09:12:34Z"
-version: "1.0.0"
-description: "Default persona for general development"
+```bash
+# Check web service health
+curl http://localhost:8543/health
 
-statistics:
-  total_memories: 15234
-  total_size_bytes: 52428800
-  last_consolidation: "2024-01-16T08:00:00Z"
-  
-configuration:
-  capture_mode: "balanced"
-  consolidation_threshold: 1000
-  vector_dimensions: 3072
+# Test MCP server manually
+echo '{"id": "test", "method": "initialize", "params": {}}' | persistent-context-mcp --stdio
 ```
 
-## Performance Optimizations
+## Session Continuity Workflow
 
-### Async Pipeline
+### Typical Usage Pattern
 
-- Non-blocking capture queue
-- Background processing workers
-- Configurable worker pool size
+1. **Start Web Services**: `docker-compose up -d`
+2. **Install MCP Server**: `go install ./cmd/persistent-context-mcp/`
+3. **Configure Claude Code**: MCP server auto-connects via `.mcp.json`
+4. **Work in Session 1**: Context automatically captured
+5. **Exit Claude Code**: Memories persist in web service
+6. **Restart Claude Code**: Previous context automatically restored
+7. **Continue in Session 2**: Build on previous knowledge
 
-### Batching
+## MVP Implementation Focus
 
-- Group related captures within time windows
-- Batch HTTP requests to journal API
-- Combine similar operations
+For the MVP, the MCP server focuses on core functionality:
 
-### Caching
+- **Simplified Architecture**: Direct HTTP communication with web service
+- **Essential Tools Only**: 5 core tools for session continuity
+- **Basic Configuration**: Minimal settings for reliable operation
+- **Integration Testing**: Manual verification through actual usage
 
-- Cache generated embeddings
-- Reuse embeddings for similar content
-- LRU cache with configurable size
+## Future Enhancements
 
-### Priority Queue
+Post-MVP features that may be added:
 
-- High priority: Errors, test failures
-- Medium priority: File edits, search results
-- Low priority: Routine reads, status checks
-
-## Default Configuration
-
-```yaml
-# Built-in defaults (lowest priority)
-mcp:
-  server_endpoint: "http://localhost:8080"
-  capture_mode: "balanced"
-  
-  # Performance settings
-  batch_window_ms: 5000
-  max_batch_size: 10
-  cache_size: 1000
-  priority_queue_size: 100
-  worker_count: 4
-  
-  # Default filter rules
-  filter_rules:
-    file_operations:
-      min_change_size: 50
-      debounce_ms: 2000
-      ignore_patterns:
-        - "*.tmp"
-        - "*.log"
-        - "node_modules/**"
-        - ".git/**"
-        - "bin/**"
-        - "data/**"
-      max_file_size: 5242880              # 5MB
-      
-    command_execution:
-      capture_errors: true
-      capture_patterns:
-        - "^(ERROR|FAIL|PANIC)"
-        - "test.*failed"
-        - "build.*error"
-      max_output_lines: 5000
-      
-    search_operations:
-      min_results: 1
-      max_results: 50
-      batch_window_ms: 30000
-```
-
-## Implementation Plan
-
-1. **Phase 1**: Basic capture pipeline with configurable filtering
-2. **Phase 2**: Hierarchical configuration system with file includes
-3. **Phase 3**: Profile system with inheritance and overrides
-4. **Phase 4**: Persona management with local storage
-5. **Phase 5**: Performance optimization and cloud storage support
-
-## Performance Targets
-
-- Capture latency: <100ms @ 95th percentile
-- Memory overhead: <50MB for MCP server process
-- Throughput: 100 captures/minute sustained
-- Embedding cache hit rate: >80%
-- Zero blocking of Claude Code operations
-- Configuration load time: <50ms including all files
+- **Advanced Filtering**: Configurable capture rules and patterns
+- **Multiple Personas**: Support for different memory contexts
+- **Performance Optimization**: Async pipelines and caching
+- **Cloud Storage**: Remote memory persistence options

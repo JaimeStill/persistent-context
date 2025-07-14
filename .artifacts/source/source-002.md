@@ -7,6 +7,7 @@ The Memory Association Tracking System is like a **social network for memories**
 ### The Problem It Solves
 
 Imagine if your brain stored memories as isolated, disconnected facts:
+
 - "I learned Python"
 - "I built a web scraper"
 - "I fixed a bug in my code"
@@ -55,6 +56,7 @@ func NewAssociationTracker() *AssociationTracker {
 **Analogy**: Like a librarian's card catalog system that cross-references books by multiple criteria. You can quickly find all books by an author (source index) or all books that reference a topic (target index).
 
 **The Three-Index Design**:
+
 1. **Main storage** (`associations`): The complete relationship records
 2. **Source index**: "What memories does this memory connect TO?"
 3. **Target index**: "What memories connect TO this memory?"
@@ -97,6 +99,7 @@ func (at *AssociationTracker) CreateAssociation(
 **Analogy**: Like drawing a line between two points on a map and labeling it with the type of road (highway, street, path) and how well-traveled it is (strength).
 
 **Key Parameters**:
+
 - **Source/Target IDs**: Which memories to connect
 - **Type**: Nature of relationship (temporal, semantic, causal, contextual)
 - **Strength**: How strong the connection is (0.0-1.0)
@@ -187,7 +190,8 @@ func (aa *AssociationAnalyzer) AnalyzeTemporalAssociations(
 
 **Analogy**: Like how you naturally associate events that happened on the same day - "I remember having coffee before that important meeting."
 
-**The Time Window Concept**: 
+**The Time Window Concept**:
+
 - Memories within the window are considered related
 - Closer in time = stronger relationship
 - Helps maintain context from conversations or learning sessions
@@ -240,7 +244,8 @@ func (aa *AssociationAnalyzer) AnalyzeSemanticAssociations(
 
 **Analogy**: Like a wine expert identifying similar wines by comparing their flavor profiles - even if they're from different regions, similar characteristics create connections.
 
-**Embeddings Explained**: 
+**Embeddings Explained**:
+
 - Each memory has a numerical "fingerprint" (embedding) representing its meaning
 - Similar meanings have similar numbers
 - We measure similarity using cosine similarity (explained below)
@@ -301,6 +306,7 @@ func (aa *AssociationAnalyzer) AnalyzeContextualAssociations(
 **Analogy**: Like organizing photos by event - all pictures from the same wedding are related, even if they show different moments.
 
 **Context Sources**:
+
 - Same conversation thread
 - Same document or file
 - Same user session
@@ -336,11 +342,13 @@ func (aa *AssociationAnalyzer) calculateCosineSimilarity(embedding1, embedding2 
 **Analogy**: Like measuring the angle between two arrows - arrows pointing in the same direction have high similarity (small angle), while perpendicular arrows have low similarity.
 
 **Why Cosine Similarity?**:
+
 - **Scale-invariant**: Measures direction, not magnitude
 - **Range**: Always between -1 and 1 (we typically see 0 to 1 for embeddings)
 - **Intuitive**: 1.0 = identical, 0.0 = unrelated, -1.0 = opposite
 
 **The Math Simplified**:
+
 1. **Dot Product**: Multiply corresponding numbers and sum (measures alignment)
 2. **Norms**: Calculate the "length" of each vector
 3. **Normalize**: Divide by lengths to get pure direction comparison
@@ -348,19 +356,25 @@ func (aa *AssociationAnalyzer) calculateCosineSimilarity(embedding1, embedding2 
 ## Key Design Patterns Demonstrated
 
 ### 1. **Graph Data Structure**
+
 The association system implements an in-memory graph database:
+
 - Nodes: Memories
 - Edges: Associations
 - Properties: Type, strength, metadata
 
 ### 2. **Bidirectional Indexing**
+
 Maintains both forward and reverse indexes for O(1) lookups in either direction.
 
 ### 3. **Strategy Pattern**
+
 Different association analyzers (temporal, semantic, contextual) implement different strategies for finding relationships.
 
 ### 4. **Similarity Metrics**
+
 Uses appropriate similarity measures for different data types:
+
 - Time-based: Inverse distance
 - Semantic: Cosine similarity
 - Contextual: Exact matching
