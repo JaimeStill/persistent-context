@@ -52,18 +52,17 @@ curl http://localhost:8543/ready
 
 ### 3. Build and Install MCP Server
 
-**Build locally** (creates `server/bin/persistent-context-mcp`):
+**Build locally** (creates `bin/persistent-context-mcp`):
 
 ```bash
-cd server
-go build -o bin/persistent-context-mcp ./cmd/persistent-context-mcp/
+cd src
+go build -o ../bin/persistent-context-mcp ./persistent-context-mcp/
 ```
 
 **Install globally** (creates `$GOPATH/bin/persistent-context-mcp`):
 
 ```bash
-cd server
-go install ./cmd/persistent-context-mcp
+go install ./persistent-context-mcp
 ```
 
 ### 4. Connect Claude Code
@@ -82,7 +81,7 @@ You can test the MCP server directly before connecting to Claude Code:
 
 ```bash
 # Test initialize command (using local binary)
-echo '{"id": "test", "method": "initialize", "params": {}}' | ./server/bin/persistent-context-mcp --stdio
+echo '{"id": "test", "method": "initialize", "params": {}}' | ./bin/persistent-context-mcp --stdio
 
 # Test tools list (using global binary)
 echo '{"id": "test2", "method": "tools/list", "params": {}}' | persistent-context-mcp --stdio

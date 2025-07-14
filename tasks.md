@@ -404,33 +404,38 @@ This document outlines the development roadmap for building the Autonomous LLM M
 
 Following comprehensive project review on July 14, 2025, the roadmap has been refined to focus on delivering a demonstrable MVP through strategic simplification and backend stabilization.
 
-### Session 12: Project Layout Refactor + Simplification (4-5 hours)
+### Session 12: Project Layout Refactor + Simplification - COMPLETED ✅
 
 **Objective**: Restructure project architecture and eliminate non-essential complexity for MVP focus.
 
-**Tasks**:
+**Major Accomplishments**:
 
-1. **Create New Directory Structure**
-   - [ ] Move MCP server to `cmd/persistent-context-mcp/` with `cmd/internal/`
-   - [ ] Move web service to `web/persistent-context-svc/` with `web/internal/`
-   - [ ] Create `pkg/` for shared packages (types, config, logger)
-   - [ ] Update all imports and build paths
+1. **✅ Directory Structure Refactored**
+   - [x] Moved to `src/persistent-context-mcp/app/` and `src/persistent-context-svc/app/` structure
+   - [x] Created `src/pkg/` for shared packages (models, config, logger, journal, memory, vectordb, llm)
+   - [x] Updated all imports and build paths with proper module references
+   - [x] Implemented flattened app/ structure for better maintainability
 
-2. **Scope Reduction**
-   - [ ] Reduce MCP tools to 4-5 essential ones:
-     - `capture_memory` (core capture)
-     - `get_memories` (session continuity)
-     - `trigger_consolidation` (memory evolution)
-     - `get_stats` (validation)
-     - `search_memories` (continuity demo)
-   - [ ] Remove placeholder endpoints and unused features
-   - [ ] Simplify configuration to essential settings
-   - [ ] Eliminate unnecessary abstractions
+2. **✅ Clean Architecture Established**
+   - [x] **Configuration Architecture**: pkg/config provides Configurable interface, services have consolidated Config structs
+   - [x] **Domain Separation**: pkg/models for shared domain types, resolved circular dependencies
+   - [x] **Memory Package API**: Complete Engine → Processor refactor with proper vocabulary (processing vs consolidation)
+   - [x] **Service Boundaries**: Clear MCP vs Web service separation with proper dependency injection
 
-3. **Verification**
-   - [ ] Ensure both binaries build correctly
-   - [ ] Test docker-compose stack with new structure
-   - [ ] Validate MCP server connects to web service
+3. **✅ Package Consolidation & Cleanup**
+   - [x] Renamed consolidation → memory package for semantic clarity
+   - [x] Updated HTTP API response types with all required fields
+   - [x] Consolidated host.go (removed Runner abstraction for direct service lifecycle)
+   - [x] Fixed import paths and type references throughout codebase
+
+**Remaining for Next Session**:
+
+> These are no longer remaining for next session, I went ahead and manually executed these after hitting my usage limit.
+
+   - [x] Fix Config structs in pkg/vectordb and pkg/llm to use pkg/config types (nearly complete)
+   - [x] Ensure both binaries build correctly
+   - [x] Test docker-compose stack with new structure
+   - [x] Update documentation and remove server/ directory
 
 ### Session 13: Backend Stabilization (3-4 hours)
 

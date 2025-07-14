@@ -53,7 +53,7 @@ services:
 
   persistent-context-svc:
     build:
-      context: ./server
+      context: ./src
       dockerfile: Dockerfile
     container_name: persistent-context-svc
     ports:

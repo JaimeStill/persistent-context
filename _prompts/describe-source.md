@@ -48,7 +48,7 @@ To request source documentation for the association tracking system:
 ```
 Request: Create a source description for the proposed implementation following the educational documentation standards established in CLAUDE.md.
 
-File: server/internal/journal/associations.go
+File: src/pkg/journal/associations.go
 Purpose: Memory association tracking system for related memories
 Complexity Level: HIGH
 Key Concepts: Graph-based relationships, similarity algorithms, temporal analysis, semantic embeddings
