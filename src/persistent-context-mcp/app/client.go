@@ -100,32 +100,6 @@ func (c *Client) GetMemories(ctx context.Context, limit uint64) ([]*models.Memor
 	return getResp.Memories, nil
 }
 
-// GetMemoryByID retrieves a specific memory via HTTP API
-func (c *Client) GetMemoryByID(ctx context.Context, id string) (*models.MemoryEntry, error) {
-	url := fmt.Sprintf("%s/api/v1/journal/%s", c.baseURL, id)
-	
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("failed to make request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("request failed with status %d", resp.StatusCode)
-	}
-
-	var memory models.MemoryEntry
-	if err := json.NewDecoder(resp.Body).Decode(&memory); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return &memory, nil
-}
 
 // QuerySimilarMemories searches for similar memories via HTTP API
 func (c *Client) QuerySimilarMemories(ctx context.Context, content string, memoryType models.MemoryType, limit uint64) ([]*models.MemoryEntry, error) {
@@ -256,28 +230,4 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
-// BatchStoreMemories stores multiple memories efficiently via HTTP API
-func (c *Client) BatchStoreMemories(ctx context.Context, entries []*models.MemoryEntry) error {
-	// For now, we'll store them one by one since the web server doesn't have a batch endpoint
-	for _, entry := range entries {
-		// Use "mcp-batch" as the source for batch operations
-		_, err := c.CaptureContext(ctx, "mcp-batch", entry.Content, entry.Metadata)
-		if err != nil {
-			return fmt.Errorf("failed to store memory %s: %w", entry.ID, err)
-		}
-	}
-	return nil
-}
 
-// GetMemoryWithAssociations retrieves a memory and its associated memories via HTTP API
-func (c *Client) GetMemoryWithAssociations(ctx context.Context, id string) (*models.MemoryEntry, []*models.MemoryEntry, error) {
-	// Get the main memory
-	memory, err := c.GetMemoryByID(ctx, id)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get memory: %w", err)
-	}
-
-	// For now, return empty associations since we don't have an endpoint for this
-	// TODO: Implement associations endpoint in web server
-	return memory, []*models.MemoryEntry{}, nil
-}

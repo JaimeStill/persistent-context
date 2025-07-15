@@ -5,8 +5,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/JaimeStill/persistent-context/pkg/models"
+	"github.com/google/uuid"
 )
 
 // AssociationTracker manages relationships between memories
@@ -40,31 +40,31 @@ func (at *AssociationTracker) CreateAssociation(sourceID, targetID string, assoc
 		UpdatedAt: time.Now(),
 		Metadata:  metadata,
 	}
-	
+
 	// Store association
 	at.associations[association.ID] = association
-	
+
 	// Update indexes
 	at.sourceIndex[sourceID] = append(at.sourceIndex[sourceID], association)
 	at.targetIndex[targetID] = append(at.targetIndex[targetID], association)
-	
+
 	return association
 }
 
 // GetAssociationsForMemory returns all associations for a given memory ID
 func (at *AssociationTracker) GetAssociationsForMemory(memoryID string) []*models.MemoryAssociation {
 	var associations []*models.MemoryAssociation
-	
+
 	// Get associations where this memory is the source
 	if sourceAssocs, exists := at.sourceIndex[memoryID]; exists {
 		associations = append(associations, sourceAssocs...)
 	}
-	
+
 	// Get associations where this memory is the target
 	if targetAssocs, exists := at.targetIndex[memoryID]; exists {
 		associations = append(associations, targetAssocs...)
 	}
-	
+
 	return associations
 }
 
@@ -72,7 +72,7 @@ func (at *AssociationTracker) GetAssociationsForMemory(memoryID string) []*model
 func (at *AssociationTracker) GetRelatedMemoryIDs(memoryID string) []string {
 	associations := at.GetAssociationsForMemory(memoryID)
 	relatedIDs := make([]string, 0, len(associations))
-	
+
 	for _, assoc := range associations {
 		if assoc.SourceID == memoryID {
 			relatedIDs = append(relatedIDs, assoc.TargetID)
@@ -80,7 +80,7 @@ func (at *AssociationTracker) GetRelatedMemoryIDs(memoryID string) []string {
 			relatedIDs = append(relatedIDs, assoc.SourceID)
 		}
 	}
-	
+
 	return relatedIDs
 }
 
@@ -100,20 +100,20 @@ func (at *AssociationTracker) RemoveAssociation(associationID string) bool {
 	if !exists {
 		return false
 	}
-	
+
 	// Remove from main storage
 	delete(at.associations, associationID)
-	
+
 	// Remove from source index
 	if sourceAssocs, exists := at.sourceIndex[association.SourceID]; exists {
 		at.sourceIndex[association.SourceID] = removeAssociationFromSlice(sourceAssocs, associationID)
 	}
-	
+
 	// Remove from target index
 	if targetAssocs, exists := at.targetIndex[association.TargetID]; exists {
 		at.targetIndex[association.TargetID] = removeAssociationFromSlice(targetAssocs, associationID)
 	}
-	
+
 	return true
 }
 
@@ -145,10 +145,10 @@ func (aa *AssociationAnalyzer) AnalyzeTemporalAssociations(ctx context.Context, 
 		if otherMemory.ID == memory.ID {
 			continue // Skip self
 		}
-		
+
 		// Calculate time difference
 		timeDiff := math.Abs(float64(memory.CreatedAt.Sub(otherMemory.CreatedAt)))
-		
+
 		// If within time window, create temporal association
 		if time.Duration(timeDiff) <= timeWindow {
 			strength := aa.calculateTemporalStrength(time.Duration(timeDiff), timeWindow)
@@ -156,7 +156,7 @@ func (aa *AssociationAnalyzer) AnalyzeTemporalAssociations(ctx context.Context, 
 				"time_diff_minutes": timeDiff / float64(time.Minute),
 				"created_at":        time.Now().Unix(),
 			}
-			
+
 			aa.tracker.CreateAssociation(
 				memory.ID,
 				otherMemory.ID,
@@ -170,29 +170,29 @@ func (aa *AssociationAnalyzer) AnalyzeTemporalAssociations(ctx context.Context, 
 
 // AnalyzeSemanticAssociations finds memories with similar content using embeddings
 func (aa *AssociationAnalyzer) AnalyzeSemanticAssociations(ctx context.Context, memory *models.MemoryEntry, candidateMemories []*models.MemoryEntry, similarityThreshold float64) {
-	if memory.Embedding == nil || len(memory.Embedding) == 0 {
+	if len(memory.Embedding) == 0 {
 		return // Cannot analyze without embeddings
 	}
-	
+
 	for _, otherMemory := range candidateMemories {
 		if otherMemory.ID == memory.ID {
 			continue // Skip self
 		}
-		
-		if otherMemory.Embedding == nil || len(otherMemory.Embedding) == 0 {
+
+		if len(otherMemory.Embedding) == 0 {
 			continue // Skip memories without embeddings
 		}
-		
+
 		// Calculate cosine similarity between embeddings
 		similarity := aa.calculateCosineSimilarity(memory.Embedding, otherMemory.Embedding)
-		
+
 		// If similarity is above threshold, create semantic association
 		if similarity >= similarityThreshold {
 			metadata := map[string]any{
 				"similarity_score": similarity,
 				"created_at":       time.Now().Unix(),
 			}
-			
+
 			aa.tracker.CreateAssociation(
 				memory.ID,
 				otherMemory.ID,
@@ -212,23 +212,23 @@ func (aa *AssociationAnalyzer) AnalyzeContextualAssociations(ctx context.Context
 			memorySource = source
 		}
 	}
-	
+
 	if memorySource == "" {
 		return // Cannot analyze without source context
 	}
-	
+
 	for _, otherMemory := range contextMemories {
 		if otherMemory.ID == memory.ID {
 			continue // Skip self
 		}
-		
+
 		otherSource := ""
 		if otherMemory.Metadata != nil {
 			if source, ok := otherMemory.Metadata["source"].(string); ok {
 				otherSource = source
 			}
 		}
-		
+
 		// If from same source/context, create contextual association
 		if otherSource != "" && otherSource == memorySource {
 			strength := 0.7 // Moderate strength for contextual associations
@@ -236,7 +236,7 @@ func (aa *AssociationAnalyzer) AnalyzeContextualAssociations(ctx context.Context
 				"shared_context": memorySource,
 				"created_at":     time.Now().Unix(),
 			}
-			
+
 			aa.tracker.CreateAssociation(
 				memory.ID,
 				otherMemory.ID,
@@ -260,19 +260,19 @@ func (aa *AssociationAnalyzer) calculateCosineSimilarity(embedding1, embedding2 
 	if len(embedding1) != len(embedding2) {
 		return 0.0 // Cannot compare vectors of different dimensions
 	}
-	
+
 	var dotProduct, norm1, norm2 float64
-	
+
 	for i := 0; i < len(embedding1); i++ {
 		dotProduct += float64(embedding1[i]) * float64(embedding2[i])
 		norm1 += float64(embedding1[i]) * float64(embedding1[i])
 		norm2 += float64(embedding2[i]) * float64(embedding2[i])
 	}
-	
+
 	// Avoid division by zero
 	if norm1 == 0.0 || norm2 == 0.0 {
 		return 0.0
 	}
-	
+
 	return dotProduct / (math.Sqrt(norm1) * math.Sqrt(norm2))
 }

@@ -24,17 +24,11 @@ type Journal interface {
 	// QuerySimilarMemories finds similar memories using vector similarity
 	QuerySimilarMemories(ctx context.Context, content string, memType models.MemoryType, limit uint64) ([]*models.MemoryEntry, error)
 	
-	// BatchStoreMemories stores multiple memories efficiently
-	BatchStoreMemories(ctx context.Context, entries []*models.MemoryEntry) error
-	
 	// ConsolidateMemories consolidates episodic memories into semantic knowledge
 	ConsolidateMemories(ctx context.Context, memories []*models.MemoryEntry) error
 	
 	// GetMemoryStats returns statistics about stored memories
 	GetMemoryStats(ctx context.Context) (map[string]any, error)
-	
-	// GetMemoryWithAssociations retrieves a memory and its associated memories
-	GetMemoryWithAssociations(ctx context.Context, id string) (*models.MemoryEntry, []*models.MemoryEntry, error)
 	
 	// HealthCheck verifies the journal is accessible
 	HealthCheck(ctx context.Context) error

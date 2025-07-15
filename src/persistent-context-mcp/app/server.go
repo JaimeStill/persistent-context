@@ -55,75 +55,14 @@ func (s *Server) Shutdown() error {
 
 // registerTools registers all MCP tools using the official SDK
 func (s *Server) registerTools() {
-	// High-level tools (combine multiple operations)
-	s.registerCaptureEventTool()
-	s.registerGetStatsTool()
-	s.registerQueryMemoryTool()
-	s.registerTriggerConsolidationTool()
-	
-	// Direct HTTP API tools
+	// Essential Core Loop tools (5 total for MVP)
 	s.registerCaptureMemoryTool()
 	s.registerGetMemoriesTool()
-	s.registerGetMemoryByIDTool()
 	s.registerSearchMemoriesTool()
-	s.registerConsolidateMemoriesTool()
-	s.registerGetMemoryStatsTool()
+	s.registerTriggerConsolidationTool()
+	s.registerGetStatsTool()
 }
 
-// Tool parameter types
-type CaptureEventParams struct {
-	Type     string         `json:"type" mcp:"Event type (file_read, file_write, command_output, search_results, etc.)"`
-	Source   string         `json:"source" mcp:"Source identifier (file path, command name, etc.)"`
-	Content  string         `json:"content" mcp:"The actual event content"`
-	Metadata map[string]any `json:"metadata,omitempty" mcp:"Additional metadata about the event"`
-}
-
-type CaptureEventResult struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
-	ID      string `json:"id"`
-}
-
-// registerCaptureEventTool adds the enhanced event capture tool
-func (s *Server) registerCaptureEventTool() {
-	tool := &mcp.Tool{
-		Name:        "capture_event",
-		Description: "Capture an event through the intelligent filtering and processing pipeline",
-	}
-
-	handler := func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[CaptureEventParams]) (*mcp.CallToolResultFor[CaptureEventResult], error) {
-		args := params.Arguments
-
-		metadata := args.Metadata
-		if metadata == nil {
-			metadata = make(map[string]any)
-		}
-
-		// Add event type to metadata for server-side processing
-		metadata["event_type"] = args.Type
-
-		// Capture via HTTP client
-		entry, err := s.httpClient.CaptureContext(ctx, args.Source, args.Content, metadata)
-		if err != nil {
-			return nil, fmt.Errorf("failed to capture memory: %w", err)
-		}
-
-		result := CaptureEventResult{
-			Success: true,
-			Message: "Memory captured successfully",
-			ID:      entry.ID,
-		}
-
-		return &mcp.CallToolResultFor[CaptureEventResult]{
-			Content: []mcp.Content{&mcp.TextContent{
-				Text: fmt.Sprintf("Successfully captured event: %s", args.Type),
-			}},
-			StructuredContent: result,
-		}, nil
-	}
-
-	mcp.AddTool(s.mcpServer, tool, handler)
-}
 
 // GetStatsResult represents the statistics result
 type GetStatsResult struct {
@@ -165,56 +104,6 @@ func (s *Server) registerGetStatsTool() {
 	mcp.AddTool(s.mcpServer, tool, handler)
 }
 
-// QueryMemoryParams represents the query memory parameters
-type QueryMemoryParams struct {
-	Query string  `json:"query" mcp:"Query text for similarity search"`
-	Limit *uint64 `json:"limit,omitempty" mcp:"Maximum number of results to return"`
-}
-
-// QueryMemoryResult represents the query memory result
-type QueryMemoryResult struct {
-	Success bool                  `json:"success"`
-	Results []*models.MemoryEntry  `json:"results"`
-	Count   int                   `json:"count"`
-}
-
-// registerQueryMemoryTool adds the memory query tool
-func (s *Server) registerQueryMemoryTool() {
-	tool := &mcp.Tool{
-		Name:        "query_memory",
-		Description: "Query memories using vector similarity search",
-	}
-
-	handler := func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[QueryMemoryParams]) (*mcp.CallToolResultFor[QueryMemoryResult], error) {
-		args := params.Arguments
-
-		limit := uint64(10) // default
-		if args.Limit != nil {
-			limit = *args.Limit
-		}
-
-		// Use HTTP client's vector search
-		results, err := s.httpClient.QuerySimilarMemories(ctx, args.Query, models.TypeEpisodic, limit)
-		if err != nil {
-			return nil, fmt.Errorf("failed to search memories: %w", err)
-		}
-
-		result := QueryMemoryResult{
-			Success: true,
-			Results: results,
-			Count:   len(results),
-		}
-
-		return &mcp.CallToolResultFor[QueryMemoryResult]{
-			Content: []mcp.Content{&mcp.TextContent{
-				Text: fmt.Sprintf("Found %d memories matching query", len(results)),
-			}},
-			StructuredContent: result,
-		}, nil
-	}
-
-	mcp.AddTool(s.mcpServer, tool, handler)
-}
 
 // TriggerConsolidationResult represents the consolidation result
 type TriggerConsolidationResult struct {
@@ -357,48 +246,6 @@ func (s *Server) registerGetMemoriesTool() {
 	mcp.AddTool(s.mcpServer, tool, handler)
 }
 
-// GetMemoryByIDParams represents the get memory by ID parameters
-type GetMemoryByIDParams struct {
-	ID string `json:"id" mcp:"The ID of the memory to retrieve"`
-}
-
-// GetMemoryByIDResult represents the get memory by ID result
-type GetMemoryByIDResult struct {
-	Success bool                `json:"success"`
-	Memory  *models.MemoryEntry  `json:"memory"`
-}
-
-// registerGetMemoryByIDTool adds the get memory by ID tool via HTTP API
-func (s *Server) registerGetMemoryByIDTool() {
-	tool := &mcp.Tool{
-		Name:        "get_memory_by_id",
-		Description: "Retrieve a specific memory by ID via the HTTP API",
-	}
-
-	handler := func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[GetMemoryByIDParams]) (*mcp.CallToolResultFor[GetMemoryByIDResult], error) {
-		args := params.Arguments
-
-		// Get memory via HTTP API
-		memory, err := s.httpClient.GetMemoryByID(ctx, args.ID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get memory: %w", err)
-		}
-
-		result := GetMemoryByIDResult{
-			Success: true,
-			Memory:  memory,
-		}
-
-		return &mcp.CallToolResultFor[GetMemoryByIDResult]{
-			Content: []mcp.Content{&mcp.TextContent{
-				Text: fmt.Sprintf("Retrieved memory: %s", memory.ID),
-			}},
-			StructuredContent: result,
-		}, nil
-	}
-
-	mcp.AddTool(s.mcpServer, tool, handler)
-}
 
 // SearchMemoriesParams represents the search memories parameters
 type SearchMemoriesParams struct {
@@ -457,96 +304,4 @@ func (s *Server) registerSearchMemoriesTool() {
 	mcp.AddTool(s.mcpServer, tool, handler)
 }
 
-// ConsolidateMemoriesParams represents the consolidate memories parameters
-type ConsolidateMemoriesParams struct {
-	MemoryIDs []string `json:"memory_ids" mcp:"Array of memory IDs to consolidate"`
-}
 
-// ConsolidateMemoriesResult represents the consolidate memories result
-type ConsolidateMemoriesResult struct {
-	Success           bool   `json:"success"`
-	Message           string `json:"message"`
-	MemoriesProcessed int    `json:"memories_processed"`
-}
-
-// registerConsolidateMemoriesTool adds the consolidate memories tool via HTTP API
-func (s *Server) registerConsolidateMemoriesTool() {
-	tool := &mcp.Tool{
-		Name:        "consolidate_memories",
-		Description: "Consolidate specified memories via the HTTP API",
-	}
-
-	handler := func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[ConsolidateMemoriesParams]) (*mcp.CallToolResultFor[ConsolidateMemoriesResult], error) {
-		args := params.Arguments
-
-		if len(args.MemoryIDs) == 0 {
-			return nil, fmt.Errorf("memory_ids cannot be empty")
-		}
-
-		// Get memories by IDs
-		var memories []*models.MemoryEntry
-		for _, id := range args.MemoryIDs {
-			memory, err := s.httpClient.GetMemoryByID(ctx, id)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get memory %s: %w", id, err)
-			}
-			memories = append(memories, memory)
-		}
-
-		// Consolidate via HTTP API
-		err := s.httpClient.ConsolidateMemories(ctx, memories)
-		if err != nil {
-			return nil, fmt.Errorf("failed to consolidate memories: %w", err)
-		}
-
-		result := ConsolidateMemoriesResult{
-			Success:           true,
-			Message:           "Memories consolidated successfully",
-			MemoriesProcessed: len(memories),
-		}
-
-		return &mcp.CallToolResultFor[ConsolidateMemoriesResult]{
-			Content: []mcp.Content{&mcp.TextContent{
-				Text: fmt.Sprintf("Successfully consolidated %d memories", len(memories)),
-			}},
-			StructuredContent: result,
-		}, nil
-	}
-
-	mcp.AddTool(s.mcpServer, tool, handler)
-}
-
-// registerGetMemoryStatsTool adds the get memory stats tool via HTTP API
-func (s *Server) registerGetMemoryStatsTool() {
-	tool := &mcp.Tool{
-		Name:        "get_memory_stats",
-		Description: "Get memory statistics via the HTTP API",
-	}
-
-	handler := func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[struct{}]) (*mcp.CallToolResultFor[GetStatsResult], error) {
-		// Get stats via HTTP API
-		stats, err := s.httpClient.GetMemoryStats(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get memory stats: %w", err)
-		}
-
-		result := GetStatsResult{
-			Success: true,
-			Stats:   stats,
-		}
-
-		totalMemories := 0
-		if total, ok := stats["total_memories"].(float64); ok {
-			totalMemories = int(total)
-		}
-
-		return &mcp.CallToolResultFor[GetStatsResult]{
-			Content: []mcp.Content{&mcp.TextContent{
-				Text: fmt.Sprintf("Memory statistics retrieved: %d total memories", totalMemories),
-			}},
-			StructuredContent: result,
-		}, nil
-	}
-
-	mcp.AddTool(s.mcpServer, tool, handler)
-}

@@ -147,32 +147,6 @@ func (vj *VectorJournal) QuerySimilarMemories(ctx context.Context, content strin
 	return memories, nil
 }
 
-// BatchStoreMemories stores multiple memories efficiently
-func (vj *VectorJournal) BatchStoreMemories(ctx context.Context, entries []*models.MemoryEntry) error {
-	batchSize := int(vj.config.BatchSize)
-	if batchSize <= 0 {
-		batchSize = 100
-	}
-
-	for i := 0; i < len(entries); i += batchSize {
-		end := i + batchSize
-		if end > len(entries) {
-			end = len(entries)
-		}
-
-		batch := entries[i:end]
-		for _, entry := range batch {
-			if err := vj.vectorDB.Store(ctx, entry); err != nil {
-				slog.Error("Failed to store memory in batch", "error", err, "id", entry.ID)
-				return fmt.Errorf("failed to store memory %s: %w", entry.ID, err)
-			}
-		}
-
-		slog.Debug("Stored memory batch", "count", len(batch), "total_processed", end)
-	}
-
-	return nil
-}
 
 // ConsolidateMemories processes episodic memories into semantic knowledge
 func (vj *VectorJournal) ConsolidateMemories(ctx context.Context, memories []*models.MemoryEntry) error {
@@ -300,33 +274,3 @@ func (vj *VectorJournal) analyzeNewMemoryAssociations(ctx context.Context, newMe
 		"associations_found", len(associationIDs))
 }
 
-// GetMemoryWithAssociations retrieves a memory and its associated memories
-func (vj *VectorJournal) GetMemoryWithAssociations(ctx context.Context, id string) (*models.MemoryEntry, []*models.MemoryEntry, error) {
-	// Get the main memory
-	memory, err := vj.GetMemoryByID(ctx, id)
-	if err != nil {
-		return nil, nil, err
-	}
-	
-	// Get associated memory IDs
-	associatedIDs := vj.associations.GetRelatedMemoryIDs(id)
-	
-	// Retrieve associated memories
-	associatedMemories := make([]*models.MemoryEntry, 0, len(associatedIDs))
-	for _, assocID := range associatedIDs {
-		// Try to retrieve each associated memory (could be different types)
-		for _, memType := range []models.MemoryType{models.TypeEpisodic, models.TypeSemantic, models.TypeProcedural, models.TypeMetacognitive} {
-			assocMemory, err := vj.vectorDB.Retrieve(ctx, memType, assocID)
-			if err == nil {
-				associatedMemories = append(associatedMemories, assocMemory)
-				break // Found it, move to next ID
-			}
-		}
-	}
-	
-	slog.Info("Retrieved memory with associations",
-		"memory_id", id,
-		"associated_count", len(associatedMemories))
-	
-	return memory, associatedMemories, nil
-}

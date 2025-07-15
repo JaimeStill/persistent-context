@@ -52,6 +52,7 @@
 - **Minimize Test Maintenance**: Keep testing infrastructure as lightweight as possible to reduce maintenance overhead
 - **Prefer Integration Testing**: When possible, test by running actual code rather than creating formal test suites or mocks
 - **Iterative Validation**: Test that what was built actually works before building on top of it to prevent compound issues
+- **Web Service Validation**: When validating `src/persistent-context-svc/`, do not build directly. Instead, ensure the Docker compose stack is not running, then run `docker compose up -d --build` to validate the web service builds and starts correctly
 
 ### Session Management and Handoff Process
 

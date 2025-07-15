@@ -60,14 +60,9 @@ func (s *Server) registerRoutes() {
 		// Journal endpoints
 		api.POST("/journal", s.handleCaptureMemory)
 		api.GET("/journal", s.handleGetMemories)
-		api.GET("/journal/:id", s.handleGetMemoryByID)
 		api.POST("/journal/search", s.handleSearchMemories)
 		api.POST("/journal/consolidate", s.handleConsolidateMemories)
 		api.GET("/journal/stats", s.handleGetMemoryStats)
-
-		// Persona endpoints (placeholders for Session 9)
-		api.GET("/personas", s.handleGetPersonas)
-		api.POST("/personas/export", s.handleExportPersona)
 	}
 }
 
@@ -192,29 +187,6 @@ func (s *Server) handleGetMemories(c *gin.Context) {
 	})
 }
 
-// handleGetMemoryByID handles GET /api/v1/journal/:id
-func (s *Server) handleGetMemoryByID(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: "Memory ID is required",
-		})
-		return
-	}
-
-	ctx := c.Request.Context()
-	memory, err := s.deps.Journal.GetMemoryByID(ctx, id)
-	if err != nil {
-		c.JSON(http.StatusNotFound, models.ErrorResponse{
-			Error:   "memory_not_found",
-			Message: err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, memory)
-}
 
 // handleSearchMemories handles POST /api/v1/journal/search
 func (s *Server) handleSearchMemories(c *gin.Context) {
@@ -316,17 +288,6 @@ func (s *Server) handleGetMemoryStats(c *gin.Context) {
 	})
 }
 
-func (s *Server) handleGetPersonas(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"message": "Persona listing endpoint - to be implemented in Session 3",
-	})
-}
-
-func (s *Server) handleExportPersona(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"message": "Persona export endpoint - to be implemented in Session 3",
-	})
-}
 
 // Start starts the HTTP server
 func (s *Server) Start() error {
