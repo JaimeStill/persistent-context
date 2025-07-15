@@ -40,6 +40,7 @@ type Dependencies struct {
 	LLMClient           llm.LLM
 	Config              *config.JournalConfig
 	MemoryConfig        *config.MemoryConfig
+	VectorDBConfig      *config.VectorDBConfig
 }
 
 // Validate ensures all required dependencies are present
@@ -55,6 +56,9 @@ func (deps *Dependencies) Validate() error {
 	}
 	if deps.MemoryConfig == nil {
 		return fmt.Errorf("memory config is required for memory scoring functionality")
+	}
+	if deps.VectorDBConfig == nil {
+		return fmt.Errorf("vectordb config is required for vector dimension configuration")
 	}
 	return nil
 }

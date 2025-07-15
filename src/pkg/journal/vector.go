@@ -15,13 +15,14 @@ import (
 
 // VectorJournal implements LLM memory storage using vectordb and llm interfaces
 type VectorJournal struct {
-	vectorDB     vectordb.VectorDB
-	llmClient    llm.LLM
-	config       *config.JournalConfig
-	scorer       *MemoryScorer
-	associations *AssociationTracker
-	analyzer     *AssociationAnalyzer
-	counter      int64
+	vectorDB       vectordb.VectorDB
+	llmClient      llm.LLM
+	config         *config.JournalConfig
+	vectorDBConfig *config.VectorDBConfig
+	scorer         *MemoryScorer
+	associations   *AssociationTracker
+	analyzer       *AssociationAnalyzer
+	counter        int64
 }
 
 // NewVectorJournal creates a new vector-based journal implementation
@@ -29,13 +30,14 @@ func NewVectorJournal(deps *Dependencies) *VectorJournal {
 	associations := NewAssociationTracker()
 	
 	return &VectorJournal{
-		vectorDB:     deps.VectorDB,
-		llmClient:    deps.LLMClient,
-		config:       deps.Config,
-		scorer:       NewMemoryScorer(deps.MemoryConfig),
-		associations: associations,
-		analyzer:     NewAssociationAnalyzer(associations),
-		counter:      time.Now().UnixNano(), // Use timestamp as base counter
+		vectorDB:       deps.VectorDB,
+		llmClient:      deps.LLMClient,
+		config:         deps.Config,
+		vectorDBConfig: deps.VectorDBConfig,
+		scorer:         NewMemoryScorer(deps.MemoryConfig),
+		associations:   associations,
+		analyzer:       NewAssociationAnalyzer(associations),
+		counter:        time.Now().UnixNano(), // Use timestamp as base counter
 	}
 }
 

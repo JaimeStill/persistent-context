@@ -103,6 +103,11 @@ func (h *Host) initialize() error {
 		return fmt.Errorf("failed to create vector database: %w", err)
 	}
 
+	// Initialize VectorDB collections
+	if err := h.vectorDB.Initialize(context.Background()); err != nil {
+		return fmt.Errorf("failed to initialize vector database: %w", err)
+	}
+
 	// Initialize LLM client
 	h.llmClient, err = llm.NewLLM(&h.config.LLM)
 	if err != nil {
@@ -111,10 +116,11 @@ func (h *Host) initialize() error {
 
 	// Initialize journal
 	journalDeps := &journal.Dependencies{
-		VectorDB:     h.vectorDB,
-		LLMClient:    h.llmClient,
-		Config:       &h.config.Journal,
-		MemoryConfig: &h.config.Memory,
+		VectorDB:       h.vectorDB,
+		LLMClient:      h.llmClient,
+		Config:         &h.config.Journal,
+		MemoryConfig:   &h.config.Memory,
+		VectorDBConfig: &h.config.VectorDB,
 	}
 
 	if err := journalDeps.Validate(); err != nil {
@@ -136,6 +142,7 @@ func (h *Host) startHTTPServer() error {
 		VectorDBHealth: h.vectorDB,
 		LLMHealth:      h.llmClient,
 		Journal:        h.journal,
+		VectorDB:       h.vectorDB,
 	}
 
 	// Create HTTP server using the server.go implementation

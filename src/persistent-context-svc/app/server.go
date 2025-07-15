@@ -53,6 +53,9 @@ func (s *Server) registerRoutes() {
 	s.engine.GET("/health", s.handleHealth)
 	s.engine.GET("/ready", s.handleReady)
 	s.engine.GET("/metrics", s.handleMetrics)
+	
+	// Admin endpoints
+	s.engine.POST("/admin/init", s.handleInitialize)
 
 	// API routes group
 	api := s.engine.Group("/api/v1")
@@ -126,6 +129,26 @@ func (s *Server) handleMetrics(c *gin.Context) {
 			"memory_entries":       0,
 			"consolidation_cycles": 0,
 		},
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+	})
+}
+
+// handleInitialize handles POST /admin/init - initializes VectorDB collections
+func (s *Server) handleInitialize(c *gin.Context) {
+	ctx := c.Request.Context()
+	
+	// Initialize VectorDB collections
+	if err := s.deps.VectorDB.Initialize(ctx); err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "initialization_failed",
+			Message: fmt.Sprintf("failed to initialize vector database: %v", err),
+		})
+		return
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"status":    "initialized",
+		"message":   "VectorDB collections initialized successfully",
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	})
 }

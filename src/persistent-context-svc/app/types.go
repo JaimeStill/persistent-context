@@ -4,6 +4,7 @@ import (
 	"context"
 	
 	"github.com/JaimeStill/persistent-context/pkg/journal"
+	"github.com/JaimeStill/persistent-context/pkg/vectordb"
 )
 
 // HealthChecker interface for checking service health
@@ -16,4 +17,5 @@ type Dependencies struct {
 	VectorDBHealth HealthChecker
 	LLMHealth      HealthChecker
 	Journal        journal.Journal
+	VectorDB       vectordb.VectorDB
 }

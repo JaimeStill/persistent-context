@@ -63,9 +63,6 @@ services:
         condition: service_healthy
       ollama:
         condition: service_healthy
-    environment:
-      # Vector Database Configuration
-      - APP_VECTORDB_VECTOR_DIMENSION=1536
     volumes:
       - ./data/personas:/data/personas
     restart: unless-stopped
