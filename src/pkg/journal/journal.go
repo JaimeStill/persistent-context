@@ -16,7 +16,7 @@ type Journal interface {
 	CaptureContext(ctx context.Context, source string, content string, metadata map[string]any) (*models.MemoryEntry, error)
 	
 	// GetMemories retrieves memories with pagination
-	GetMemories(ctx context.Context, limit uint64) ([]*models.MemoryEntry, error)
+	GetMemories(ctx context.Context, limit uint32) ([]*models.MemoryEntry, error)
 	
 	// GetMemoryByID retrieves a specific memory by ID
 	GetMemoryByID(ctx context.Context, id string) (*models.MemoryEntry, error)

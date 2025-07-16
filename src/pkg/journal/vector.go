@@ -94,17 +94,15 @@ func (vj *VectorJournal) CaptureContext(ctx context.Context, source string, cont
 }
 
 // GetMemories retrieves recent memories from episodic storage
-func (vj *VectorJournal) GetMemories(ctx context.Context, limit uint64) ([]*models.MemoryEntry, error) {
+func (vj *VectorJournal) GetMemories(ctx context.Context, limit uint32) ([]*models.MemoryEntry, error) {
 	if limit == 0 {
 		limit = vj.config.BatchSize
 	}
 
-	// Create a dummy vector for recent memories query (we'll improve this in Session 3)
-	dummyVector := make([]float32, 1536) // Standard embedding dimension
-	
-	memories, err := vj.vectorDB.Query(ctx, models.TypeEpisodic, dummyVector, limit)
+	// Get recent memories without similarity search
+	memories, err := vj.vectorDB.GetRecent(ctx, models.TypeEpisodic, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query memories: %w", err)
+		return nil, fmt.Errorf("failed to get recent memories: %w", err)
 	}
 
 	return memories, nil
@@ -205,17 +203,37 @@ func (vj *VectorJournal) ConsolidateMemories(ctx context.Context, memories []*mo
 
 // GetMemoryStats returns statistics about stored memories
 func (vj *VectorJournal) GetMemoryStats(ctx context.Context) (map[string]any, error) {
-	stats := map[string]any{
-		"episodic_memories":      0,
-		"semantic_memories":      0,
-		"procedural_memories":    0,
-		"metacognitive_memories": 0,
-		"total_memories":         0,
+	// Get actual counts from VectorDB
+	episodicCount, err := vj.vectorDB.Count(ctx, models.TypeEpisodic)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count episodic memories: %w", err)
 	}
 
-	// For now, return basic stats (we'll enhance this in Session 3)
-	// This would require additional Qdrant queries to get accurate counts
-	
+	semanticCount, err := vj.vectorDB.Count(ctx, models.TypeSemantic)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count semantic memories: %w", err)
+	}
+
+	proceduralCount, err := vj.vectorDB.Count(ctx, models.TypeProcedural)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count procedural memories: %w", err)
+	}
+
+	metacognitiveCount, err := vj.vectorDB.Count(ctx, models.TypeMetacognitive)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count metacognitive memories: %w", err)
+	}
+
+	totalCount := episodicCount + semanticCount + proceduralCount + metacognitiveCount
+
+	stats := map[string]any{
+		"episodic_memories":      episodicCount,
+		"semantic_memories":      semanticCount,
+		"procedural_memories":    proceduralCount,
+		"metacognitive_memories": metacognitiveCount,
+		"total_memories":         totalCount,
+	}
+
 	return stats, nil
 }
 

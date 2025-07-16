@@ -32,6 +32,7 @@
 - When removing code/functions, do not leave orphaned comments - comments should only exist when attached to actual code
 - **Avoid `goto` statements**: Use early returns, extracted functions, and clear boolean logic instead of `goto` for better maintainability
 - **Use typed string enums**: Replace magic strings with typed string constants for distinct sets of possible values (e.g., event types, states, modes) to prevent errors and improve maintainability
+- **Type Alignment Principle**: Avoid type casting at all costs. Interface types should align with the underlying database/external API's native types. When a configuration or interface method is used across multiple operations with different types, choose the type that: (1) matches the most frequent usage, (2) prevents overflow in the primary path, (3) allows safe conversion only for secondary usages. Cast only when unavoidable due to calling multiple methods with different argument types
 
 ### Build Standards
 

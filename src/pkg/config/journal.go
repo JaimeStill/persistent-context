@@ -9,7 +9,7 @@ import (
 
 // JournalConfig holds journal processing configuration
 type JournalConfig struct {
-	BatchSize             uint64        `mapstructure:"batch_size"`             // Batch size for processing
+	BatchSize             uint32        `mapstructure:"batch_size"`             // Batch size for processing
 	RetentionDays         int           `mapstructure:"retention_days"`         // Days to retain memories
 	ConsolidationInterval time.Duration `mapstructure:"consolidation_interval"` // How often to consolidate
 	MaxMemorySize         uint64        `mapstructure:"max_memory_size"`        // Max memories to keep
