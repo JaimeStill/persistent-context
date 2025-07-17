@@ -157,7 +157,7 @@ type CaptureMemoryResponse struct {
 }
 
 type GetMemoriesRequest struct {
-	Limit uint64 `json:"limit,omitempty"`
+	Limit uint32 `json:"limit,omitempty"`
 }
 
 type SearchMemoriesRequest struct {
@@ -176,7 +176,7 @@ type SearchMemoriesResponse struct {
 type GetMemoriesResponse struct {
 	Memories []*MemoryEntry `json:"memories"`
 	Count    int            `json:"count"`
-	Limit    uint64         `json:"limit"`
+	Limit    uint32         `json:"limit"`
 }
 
 type ConsolidateRequest struct {

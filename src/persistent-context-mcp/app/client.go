@@ -74,7 +74,7 @@ func (c *Client) CaptureContext(ctx context.Context, source string, content stri
 }
 
 // GetMemories retrieves memories via HTTP API
-func (c *Client) GetMemories(ctx context.Context, limit uint64) ([]*models.MemoryEntry, error) {
+func (c *Client) GetMemories(ctx context.Context, limit uint32) ([]*models.MemoryEntry, error) {
 	url := fmt.Sprintf("%s/api/v1/journal?limit=%d", c.baseURL, limit)
 	
 	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, nil)

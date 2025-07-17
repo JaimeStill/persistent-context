@@ -198,7 +198,7 @@ func (s *Server) registerCaptureMemoryTool() {
 
 // GetMemoriesParams represents the get memories parameters
 type GetMemoriesParams struct {
-	Limit *uint64 `json:"limit,omitempty" mcp:"Maximum number of memories to retrieve"`
+	Limit *uint32 `json:"limit,omitempty" mcp:"Maximum number of memories to retrieve"`
 }
 
 // GetMemoriesResult represents the get memories result
@@ -218,7 +218,7 @@ func (s *Server) registerGetMemoriesTool() {
 	handler := func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[GetMemoriesParams]) (*mcp.CallToolResultFor[GetMemoriesResult], error) {
 		args := params.Arguments
 
-		limit := uint64(100) // default
+		limit := uint32(100) // default
 		if args.Limit != nil {
 			limit = *args.Limit
 		}

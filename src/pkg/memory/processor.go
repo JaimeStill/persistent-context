@@ -230,7 +230,7 @@ func (p *Processor) OnContextInit(ctx context.Context, event ProcessingEvent) er
 	p.logger.Info("Processing context initialization consolidation")
 
 	// Get recent memories from previous session
-	memories, err := p.journal.GetMemories(ctx, uint64(p.config.MemoryCountThreshold))
+	memories, err := p.journal.GetMemories(ctx, p.config.MemoryCountThreshold)
 	if err != nil {
 		return fmt.Errorf("failed to get memories: %w", err)
 	}
@@ -258,12 +258,12 @@ func (p *Processor) OnNewContext(ctx context.Context, event ProcessingEvent) err
 	p.logger.Info("Processing new context consolidation")
 
 	// Check for consolidation opportunities
-	memories, err := p.journal.GetMemories(ctx, uint64(p.config.MemoryCountThreshold*2))
+	memories, err := p.journal.GetMemories(ctx, p.config.MemoryCountThreshold*2)
 	if err != nil {
 		return fmt.Errorf("failed to get memories: %w", err)
 	}
 
-	if len(memories) < p.config.MemoryCountThreshold {
+	if uint32(len(memories)) < p.config.MemoryCountThreshold {
 		p.logger.Debug("Not enough memories for new context consolidation")
 		return nil
 	}
@@ -303,7 +303,7 @@ func (p *Processor) OnConversationEnd(ctx context.Context, event ProcessingEvent
 	p.logger.Info("Processing conversation end consolidation")
 
 	// Get all recent memories
-	memories, err := p.journal.GetMemories(ctx, uint64(p.config.MemoryCountThreshold*3))
+	memories, err := p.journal.GetMemories(ctx, p.config.MemoryCountThreshold*3)
 	if err != nil {
 		return fmt.Errorf("failed to get memories: %w", err)
 	}
@@ -343,13 +343,14 @@ func (p *Processor) selectMemoriesForConsolidation(memories []*models.MemoryEntr
 	})
 
 	// Select top scoring memories up to threshold
+	scoreCount := uint32(len(scores))
 	maxMemories := p.config.MemoryCountThreshold
-	if len(scores) < maxMemories {
-		maxMemories = len(scores)
+	if scoreCount < maxMemories {
+		maxMemories = scoreCount
 	}
 
 	selected := make([]*models.MemoryEntry, maxMemories)
-	for i := 0; i < maxMemories; i++ {
+	for i := 0; i < int(maxMemories); i++ {
 		selected[i] = scores[i].memory
 	}
 
@@ -454,7 +455,7 @@ func (p *Processor) scheduleEarlyConsolidation(ctx context.Context) error {
 	p.logger.Info("Scheduling early consolidation due to context window constraints")
 
 	// Get a smaller set of memories for emergency consolidation
-	memories, err := p.journal.GetMemories(ctx, uint64(p.config.MemoryCountThreshold/2))
+	memories, err := p.journal.GetMemories(ctx, p.config.MemoryCountThreshold/2)
 	if err != nil {
 		return fmt.Errorf("failed to get memories for early consolidation: %w", err)
 	}
@@ -465,8 +466,9 @@ func (p *Processor) scheduleEarlyConsolidation(ctx context.Context) error {
 
 	// Select only the most important memories
 	selectedMemories := p.selectMemoriesForConsolidation(memories)
-	if len(selectedMemories) > p.config.MemoryCountThreshold/3 {
-		selectedMemories = selectedMemories[:p.config.MemoryCountThreshold/3]
+	maxSelected := p.config.MemoryCountThreshold / 3
+	if uint32(len(selectedMemories)) > maxSelected {
+		selectedMemories = selectedMemories[:maxSelected]
 	}
 
 	return p.processMemories(ctx, selectedMemories, "early_consolidation")

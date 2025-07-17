@@ -10,7 +10,7 @@ import (
 type MemoryConfig struct {
 	MaxTokens              int     `mapstructure:"max_tokens"`               // Maximum context window size
 	SafetyMargin           float64 `mapstructure:"safety_margin"`            // Safety margin for context window (0.0-1.0)
-	MemoryCountThreshold   int     `mapstructure:"memory_count_threshold"`   // Number of memories to trigger consolidation
+	MemoryCountThreshold   uint32  `mapstructure:"memory_count_threshold"`   // Number of memories to trigger consolidation
 	EmbeddingSizeThreshold uint64  `mapstructure:"embedding_size_threshold"` // Total embedding size threshold
 	ContextUsageThreshold  float64 `mapstructure:"context_usage_threshold"`  // Context usage percentage threshold
 	DecayFactor            float64 `mapstructure:"decay_factor"`             // Time decay factor for memory importance

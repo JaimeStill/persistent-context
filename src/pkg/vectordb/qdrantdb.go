@@ -60,6 +60,12 @@ func (qc *QdrantDB) Initialize(ctx context.Context) error {
 				return fmt.Errorf("failed to create collection %s: %w", collectionName, err)
 			}
 			slog.Info("Created collection", "collection", collectionName, "type", memType)
+			
+			// Create payload index for created_at field to support GetRecent() ordering
+			if err := qc.createPayloadIndex(ctx, collectionName); err != nil {
+				return fmt.Errorf("failed to create payload index for collection %s: %w", collectionName, err)
+			}
+			slog.Info("Created payload index for created_at", "collection", collectionName)
 		}
 	}
 
@@ -80,7 +86,7 @@ func (qc *QdrantDB) Store(ctx context.Context, entry *models.MemoryEntry) error 
 			Payload: map[string]*qdrant.Value{
 				"content":     qdrant.NewValueString(entry.Content),
 				"type":        qdrant.NewValueString(string(entry.Type)),
-				"created_at":  qdrant.NewValueString(entry.CreatedAt.Format(time.RFC3339)),
+				"created_at":  qdrant.NewValueInt(entry.CreatedAt.Unix()),
 				"accessed_at": qdrant.NewValueString(entry.AccessedAt.Format(time.RFC3339)),
 				"strength":    qdrant.NewValueDouble(float64(entry.Strength)),
 			},
@@ -347,6 +353,26 @@ func (qc *QdrantDB) createCollection(ctx context.Context, name string) error {
 	return err
 }
 
+// createPayloadIndex creates a payload index for the created_at field
+func (qc *QdrantDB) createPayloadIndex(ctx context.Context, collectionName string) error {
+	fieldType := qdrant.FieldType_FieldTypeInteger
+	rangeEnabled := true
+	
+	_, err := qc.client.CreateFieldIndex(ctx, &qdrant.CreateFieldIndexCollection{
+		CollectionName: collectionName,
+		FieldName:      "created_at",
+		FieldType:      &fieldType, // Unix timestamp
+		FieldIndexParams: &qdrant.PayloadIndexParams{
+			IndexParams: &qdrant.PayloadIndexParams_IntegerIndexParams{
+				IntegerIndexParams: &qdrant.IntegerIndexParams{
+					Range: &rangeEnabled, // Enable range queries for ordering
+				},
+			},
+		},
+	})
+	return err
+}
+
 // retrievedPointToMemoryEntry converts a Qdrant RetrievedPoint to a memory entry
 func (qc *QdrantDB) retrievedPointToMemoryEntry(point *qdrant.RetrievedPoint) (*models.MemoryEntry, error) {
 	entry := &models.MemoryEntry{
@@ -370,8 +396,8 @@ func (qc *QdrantDB) retrievedPointToMemoryEntry(point *qdrant.RetrievedPoint) (*
 			entry.Type = models.MemoryType(memType.GetStringValue())
 		}
 		if createdAt := payload["created_at"]; createdAt != nil {
-			if t, err := time.Parse(time.RFC3339, createdAt.GetStringValue()); err == nil {
-				entry.CreatedAt = t
+			if timestamp := createdAt.GetIntegerValue(); timestamp != 0 {
+				entry.CreatedAt = time.Unix(timestamp, 0)
 			}
 		}
 		if accessedAt := payload["accessed_at"]; accessedAt != nil {
@@ -427,8 +453,8 @@ func (qc *QdrantDB) scoredPointToMemoryEntry(scoredPoint *qdrant.ScoredPoint) (*
 			entry.Type = models.MemoryType(memType.GetStringValue())
 		}
 		if createdAt := payload["created_at"]; createdAt != nil {
-			if t, err := time.Parse(time.RFC3339, createdAt.GetStringValue()); err == nil {
-				entry.CreatedAt = t
+			if timestamp := createdAt.GetIntegerValue(); timestamp != 0 {
+				entry.CreatedAt = time.Unix(timestamp, 0)
 			}
 		}
 		if accessedAt := payload["accessed_at"]; accessedAt != nil {
