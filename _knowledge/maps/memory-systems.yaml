@@ -1,0 +1,99 @@
+domain: "Persistent Memory Systems"
+description: "Core concepts for building AI memory systems with vector storage and consolidation"
+
+concepts:
+  - id: "vector-database-fundamentals"
+    name: "Vector Database Fundamentals"
+    level: foundational
+    description: "Understanding high-dimensional data storage and similarity search"
+    sessions: ["session-001"]
+    
+  - id: "embeddings-and-vectors"
+    name: "Embeddings and Vector Representations"
+    level: foundational
+    description: "How text and concepts become numerical vectors"
+    sessions: []
+    
+  - id: "similarity-search"
+    name: "Similarity Search Algorithms"
+    level: intermediate
+    description: "Finding related memories through vector similarity"
+    sessions: []
+    
+  - id: "memory-types"
+    name: "Memory Classification Systems"
+    level: foundational
+    description: "Episodic vs semantic memory patterns"
+    sessions: []
+    
+  - id: "memory-consolidation"
+    name: "Memory Consolidation Algorithms"
+    level: intermediate
+    description: "Transforming episodic memories into semantic knowledge"
+    sessions: []
+    
+  - id: "indexing-strategies"
+    name: "Vector Indexing and Performance"
+    level: advanced
+    description: "HNSW, IVF, and other indexing approaches for scale"
+    sessions: []
+    
+  - id: "session-continuity"
+    name: "Session State Management"
+    level: intermediate
+    description: "Maintaining context across AI interactions"
+    sessions: []
+    
+  - id: "distributed-memory"
+    name: "Distributed Memory Coordination"
+    level: advanced
+    description: "Consistency and coordination in distributed memory systems"
+    sessions: []
+
+relationships:
+  - from: "vector-database-fundamentals"
+    to: "embeddings-and-vectors"
+    type: enables
+    
+  - from: "embeddings-and-vectors" 
+    to: "similarity-search"
+    type: enables
+    
+  - from: "vector-database-fundamentals"
+    to: "memory-types"
+    type: relates-to
+    
+  - from: "memory-types"
+    to: "memory-consolidation"
+    type: enables
+    
+  - from: "similarity-search"
+    to: "memory-consolidation"
+    type: enables
+    
+  - from: "vector-database-fundamentals"
+    to: "indexing-strategies"
+    type: enables
+    
+  - from: "memory-consolidation"
+    to: "session-continuity"
+    type: enables
+    
+  - from: "indexing-strategies"
+    to: "distributed-memory"
+    type: enables
+
+pathways:
+  - name: "Foundation Path"
+    description: "Start here with no prior vector database knowledge"
+    sequence: ["vector-database-fundamentals", "embeddings-and-vectors", "memory-types", "similarity-search"]
+    
+  - name: "Implementation Path" 
+    description: "Focus on building working memory systems"
+    sequence: ["vector-database-fundamentals", "memory-types", "memory-consolidation", "session-continuity"]
+    
+  - name: "Scaling Path"
+    description: "Advanced topics for production systems"
+    sequence: ["indexing-strategies", "distributed-memory"]
+
+tags: [memory-systems, vector-databases, ai-systems, persistence]
