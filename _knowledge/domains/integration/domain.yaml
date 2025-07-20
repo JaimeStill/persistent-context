@@ -1,0 +1,164 @@
+domain: "API to VectorDB Data Flow"
+description: "Understanding how data flows from HTTP endpoints through the system to vector storage"
+
+concepts:
+  - id: "http-endpoints"
+    name: "HTTP API Endpoints"
+    level: foundational
+    description: "REST endpoints exposed by the web service (capture, query, consolidate)"
+    sessions: []
+    
+  - id: "gin-handlers"
+    name: "Gin HTTP Handlers"
+    level: foundational
+    description: "Request parsing, validation, and response formatting"
+    sessions: []
+    
+  - id: "journal-api"
+    name: "Journal Interface API"
+    level: intermediate
+    description: "Abstract interface for memory operations (Store, Query, Retrieve)"
+    sessions: ["session-005"]
+    
+  - id: "memory-processor"
+    name: "Memory Processor Component"
+    level: intermediate
+    description: "Event queue and processing pipeline for memory operations"
+    sessions: ["session-002"]
+    
+  - id: "llm-embeddings"
+    name: "LLM Embedding Service"
+    level: intermediate
+    description: "Ollama integration for generating vector embeddings"
+    sessions: []
+    
+  - id: "vectordb-client"
+    name: "VectorDB Client Interface"
+    level: intermediate
+    description: "Abstract interface for vector database operations"
+    sessions: []
+    
+  - id: "qdrant-implementation"
+    name: "Qdrant Storage Layer"
+    level: advanced
+    description: "Concrete implementation using Qdrant collections and gRPC"
+    sessions: []
+    
+  - id: "data-transformations"
+    name: "Data Type Transformations"
+    level: intermediate
+    description: "Converting between API DTOs, domain models, and storage formats"
+    sessions: []
+    
+  - id: "error-propagation"
+    name: "Error Handling Flow"
+    level: intermediate
+    description: "How errors propagate from storage layer to API responses"
+    sessions: []
+    
+  - id: "async-processing"
+    name: "Asynchronous Pipeline"
+    level: advanced
+    description: "Fire-and-forget patterns for non-blocking operations"
+    sessions: ["session-002"]
+    
+  - id: "mcp-integration"
+    name: "MCP to HTTP Bridge"
+    level: intermediate
+    description: "How MCP tools translate to HTTP API calls"
+    sessions: []
+    
+  - id: "session-continuity"
+    name: "Session Continuity Patterns"
+    level: intermediate
+    description: "Maintaining context and state across AI interaction sessions"
+    sessions: []
+    
+  - id: "distributed-consistency"
+    name: "Distributed System Consistency"
+    level: advanced
+    description: "Ensuring data integrity across distributed memory components"
+    sessions: []
+
+relationships:
+  - from: "http-endpoints"
+    to: "gin-handlers"
+    type: implemented-by
+    
+  - from: "gin-handlers"
+    to: "journal-api"
+    type: calls
+    
+  - from: "journal-api"
+    to: "memory-processor"
+    type: delegates-to
+    
+  - from: "memory-processor"
+    to: "llm-embeddings"
+    type: uses
+    
+  - from: "memory-processor"
+    to: "vectordb-client"
+    type: stores-via
+    
+  - from: "vectordb-client"
+    to: "qdrant-implementation"
+    type: realized-by
+    
+  - from: "mcp-integration"
+    to: "http-endpoints"
+    type: calls
+    
+  - from: "data-transformations"
+    to: "journal-api"
+    type: supports
+    
+  - from: "error-propagation"
+    to: "gin-handlers"
+    type: terminates-at
+    
+  - from: "async-processing"
+    to: "memory-processor"
+    type: enables
+
+pathways:
+  - name: "Capture Memory Flow"
+    description: "POST /capture_memory endpoint to vector storage"
+    sequence: ["http-endpoints", "gin-handlers", "journal-api", "memory-processor", "llm-embeddings", "vectordb-client", "qdrant-implementation"]
+    
+  - name: "Query Memory Flow"
+    description: "GET /query endpoint for similarity search"
+    sequence: ["http-endpoints", "gin-handlers", "journal-api", "llm-embeddings", "vectordb-client", "qdrant-implementation"]
+    
+  - name: "MCP Tool Flow"
+    description: "How Claude Code tools reach the storage layer"
+    sequence: ["mcp-integration", "http-endpoints", "gin-handlers", "journal-api"]
+    
+  - name: "Error Response Flow"
+    description: "How storage errors become HTTP responses"
+    sequence: ["qdrant-implementation", "vectordb-client", "error-propagation", "gin-handlers", "http-endpoints"]
+
+key_transformations:
+  - stage: "HTTP Request → Domain Model"
+    location: "gin-handlers"
+    details: "JSON request body → Go structs with validation"
+    
+  - stage: "Text → Vector"
+    location: "llm-embeddings"
+    details: "String content → float64 array via Ollama phi3:mini model"
+    
+  - stage: "Domain Model → Storage Format"
+    location: "vectordb-client"
+    details: "Memory struct → Qdrant point with payload"
+    
+  - stage: "Query Results → API Response"
+    location: "journal-api"
+    details: "Vector search results → formatted JSON response"
+
+common_confusion_points:
+  - "Where embeddings are generated": "In memory processor before storage"
+  - "How async processing works": "Events queued, processed in background goroutine"
+  - "Why two services": "MCP runs locally, web service in Docker with dependencies"
+  - "Data persistence": "All in Qdrant, nothing stored in memory long-term"
+
+tags: [data-flow, api-design, integration, persistent-context]

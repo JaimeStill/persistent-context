@@ -5,14 +5,14 @@ This directory contains all the prompts needed to operate your Iterative Knowled
 ## Core Learning Prompts
 
 ### `new-session.md`
-Generate new learning sessions from concepts in your backlog or newly identified gaps.
+Generate new learning sessions from concepts with empty sessions in domain.yaml files or newly identified gaps.
 
 **Usage**: Follow the template to request sessions tailored to your PUPIL.md preferences.
 
 ### `add-to-backlog.md` 
-Capture new concepts for future learning when you discover knowledge gaps.
+Capture new concepts for future learning by adding them to appropriate domain.yaml files.
 
-**Usage**: Quick capture during work or structured addition of learning topics.
+**Usage**: Quick capture during work or structured addition of learning topics to domain backlogs.
 
 ### `review-concept.md`
 Revisit and reinforce concepts you've previously studied.

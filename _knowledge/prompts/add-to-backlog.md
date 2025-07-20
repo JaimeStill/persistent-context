@@ -55,7 +55,7 @@ Backlog: Circuit breaker patterns - microservices keep failing in cascade - high
 
 The AI will:
 
-1. Format your input according to backlog.yaml structure
-2. Suggest appropriate tags
-3. Identify relationships to existing concepts
-4. Recommend priority based on your current work
+1. Add the concept to the appropriate domain.yaml file's concepts section
+2. Suggest appropriate domain placement and relationships
+3. Identify connections to existing concepts in that domain
+4. Recommend priority and complexity level based on your current work

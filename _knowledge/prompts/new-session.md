@@ -1,6 +1,6 @@
 # Prompt: Generate New Learning Session
 
-Use this prompt to create a new learning session from a concept in your backlog or a newly identified knowledge gap.
+Use this prompt to create a new learning session from a concept with empty sessions in domain.yaml files or a newly identified knowledge gap.
 
 ## Prompt Template
 

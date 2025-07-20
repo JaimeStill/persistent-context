@@ -1,0 +1,200 @@
+domain: "Go Programming Patterns"
+description: "Core Go language patterns and idioms used in persistent-context architecture"
+
+concepts:
+  - id: "pointer-semantics"
+    name: "Pointers and Memory Management"
+    level: foundational
+    description: "Pointer usage, memory allocation, and reference semantics"
+    sessions: ["pointers-memory"]
+    
+  - id: "data-structures-algorithms"
+    name: "Data Structures and Algorithms"
+    level: foundational
+    description: "Built-in data structures, algorithmic patterns, and performance optimization"
+    sessions: ["data-structures-algorithms"]
+    
+  - id: "interface-design"
+    name: "Interface Design and Composition"
+    level: foundational
+    description: "Small, focused interfaces and composition patterns"
+    sessions: ["interfaces-composition"]
+    
+  - id: "concurrency-patterns"
+    name: "Concurrency with Channels and Goroutines"
+    level: intermediate
+    description: "Channel-based communication and goroutine patterns"
+    sessions: ["concurrency-patterns"]
+    
+  - id: "dependency-injection"
+    name: "Dependency Management"
+    level: intermediate
+    description: "Struct composition and dependency injection patterns"
+    sessions: []
+    
+  - id: "error-handling"
+    name: "Explicit Error Handling"
+    level: foundational
+    description: "Go's explicit error return patterns and error wrapping"
+    sessions: []
+    
+  - id: "struct-composition"
+    name: "Struct Composition and Embedding"
+    level: foundational
+    description: "Building complex types through composition"
+    sessions: []
+    
+  - id: "package-organization"
+    name: "Package Structure and Organization"
+    level: foundational
+    description: "Go package design and internal/external APIs"
+    sessions: []
+    
+  - id: "method-receivers"
+    name: "Method Receivers and Behavior"
+    level: intermediate
+    description: "Pointer vs value receivers and method design"
+    sessions: []
+    
+  - id: "interface-satisfaction"
+    name: "Implicit Interface Satisfaction"
+    level: intermediate
+    description: "Duck typing and interface implementation patterns"
+    sessions: []
+    
+  - id: "resource-management"
+    name: "Resource Management with defer"
+    level: foundational
+    description: "Resource cleanup and defer patterns"
+    sessions: []
+
+relationships:
+  - from: "pointer-semantics"
+    to: "interface-design"
+    type: enables
+    
+  - from: "pointer-semantics"
+    to: "method-receivers"
+    type: enables
+    
+  - from: "data-structures-algorithms"
+    to: "pointer-semantics"
+    type: builds-on
+    
+  - from: "data-structures-algorithms"
+    to: "concurrency-patterns"
+    type: supports
+    
+  - from: "interface-design"
+    to: "struct-composition"
+    type: relates-to
+    
+  - from: "interface-satisfaction"
+    to: "interface-design"
+    type: enables
+    
+  - from: "dependency-injection"
+    to: "struct-composition"
+    type: uses
+    
+  - from: "method-receivers"
+    to: "interface-satisfaction"
+    type: enables
+    
+  - from: "concurrency-patterns"
+    to: "error-handling"
+    type: interacts-with
+    
+  - from: "package-organization"
+    to: "dependency-injection"
+    type: influences
+
+go_design_principles:
+  - principle: "Simplicity over cleverness"
+    explanation: "Clear, readable code is preferred over complex abstractions"
+    
+  - principle: "Composition over inheritance"
+    explanation: "Build complex behavior by combining simple parts"
+    
+  - principle: "Explicit over implicit"
+    explanation: "Make dependencies and error handling visible and clear"
+    
+  - principle: "Interface segregation"
+    explanation: "Many small interfaces are better than few large ones"
+
+pattern_categories:
+  - category: "Fundamental Patterns"
+    patterns: ["pointer-semantics", "data-structures-algorithms"]
+    description: "Core language features and built-in data structures"
+    
+  - category: "Structural Patterns"
+    patterns: ["interface-design", "struct-composition", "dependency-injection"]
+    description: "How to organize code and manage dependencies"
+    
+  - category: "Behavioral Patterns" 
+    patterns: ["method-receivers", "interface-satisfaction", "error-handling"]
+    description: "How types behave and interact"
+    
+  - category: "Concurrency Patterns"
+    patterns: ["concurrency-patterns", "resource-management"]
+    description: "Managing concurrent operations and resources"
+
+project_examples:
+  - pattern: "Memory Struct with Pointers"
+    description: "Efficient memory management using pointer semantics"
+    go_implementation: "Pointer receivers and slice/map handling"
+    file_location: "pkg/models/models.go"
+    
+  - pattern: "Event Queue with Channels"
+    description: "Channel as queue data structure for event processing"
+    go_implementation: "Buffered channel with non-blocking operations"
+    file_location: "pkg/memory/processor.go"
+    
+  - pattern: "Association Graph Algorithms"
+    description: "Graph traversal and memory clustering algorithms"
+    go_implementation: "BFS/DFS on association adjacency lists"
+    file_location: "pkg/journal/associations.go"
+    
+  - pattern: "Journal Interface Implementation"
+    description: "Clean interface definition with struct implementation"
+    go_implementation: "Interface + struct with embedded dependencies"
+    file_location: "pkg/journal/journal.go"
+    
+  - pattern: "Memory Processing Pipeline"
+    description: "Event-driven processing with channels"
+    go_implementation: "Goroutine with event channel and context"
+    file_location: "pkg/memory/processor.go"
+    
+  - pattern: "Configuration Management"
+    description: "Flexible configuration with interfaces"
+    go_implementation: "Configurable interface with Viper integration"
+    file_location: "pkg/config/"
+    
+  - pattern: "HTTP API Layer"
+    description: "HTTP handlers with clean dependency management"
+    go_implementation: "Gin handlers with struct receiver pattern"
+    file_location: "src/persistent-context-svc/app/server.go"
+
+common_go_idioms:
+  - idiom: "Use pointer receivers for large structs or when methods modify receiver"
+    explanation: "Efficient memory usage and proper mutability semantics"
+    
+  - idiom: "Pre-allocate slices when size is known"
+    explanation: "Use make([]T, 0, capacity) to avoid reallocations"
+    
+  - idiom: "Accept interfaces, return structs"
+    explanation: "Function parameters should be interfaces, return values concrete types"
+    
+  - idiom: "The bigger the interface, the weaker the abstraction"
+    explanation: "Small, focused interfaces are more useful and testable"
+    
+  - idiom: "Don't communicate by sharing memory, share memory by communicating"
+    explanation: "Use channels to coordinate rather than shared variables"
+    
+  - idiom: "Errors are values"
+    explanation: "Handle errors explicitly rather than relying on exceptions"
+    
+  - idiom: "Make the zero value useful"
+    explanation: "Design types so their zero value is ready to use"
+
+tags: [go-patterns, architecture, concurrency, interfaces, pointers, data-structures, algorithms]
