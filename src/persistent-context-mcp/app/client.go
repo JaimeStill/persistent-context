@@ -140,45 +140,34 @@ func (c *Client) QuerySimilarMemories(ctx context.Context, content string, memor
 	return searchResp.Memories, nil
 }
 
-// ConsolidateMemories triggers memory consolidation via HTTP API
-func (c *Client) ConsolidateMemories(ctx context.Context, memories []*models.MemoryEntry) error {
-	memoryIDs := make([]string, len(memories))
-	for i, memory := range memories {
-		memoryIDs[i] = memory.ID
-	}
-
-	req := models.ConsolidateRequest{
-		MemoryIDs: memoryIDs,
-	}
-
-	reqBody, err := json.Marshal(req)
-	if err != nil {
-		return fmt.Errorf("failed to marshal request: %w", err)
-	}
-
+// TriggerConsolidation triggers autonomous memory consolidation via HTTP API
+func (c *Client) TriggerConsolidation(ctx context.Context) (*models.ConsolidateResponse, error) {
 	url := fmt.Sprintf("%s/api/v1/journal/consolidate", c.baseURL)
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(reqBody))
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, nil)
 	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-
-	httpReq.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
-		return fmt.Errorf("failed to make request: %w", err)
+		return nil, fmt.Errorf("failed to make request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		var errResp models.ErrorResponse
 		if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
-			return fmt.Errorf("request failed with status %d", resp.StatusCode)
+			return nil, fmt.Errorf("request failed with status %d", resp.StatusCode)
 		}
-		return fmt.Errorf("request failed: %s - %s", errResp.Error, errResp.Message)
+		return nil, fmt.Errorf("request failed: %s - %s", errResp.Error, errResp.Message)
 	}
 
-	return nil
+	var consolidateResp models.ConsolidateResponse
+	if err := json.NewDecoder(resp.Body).Decode(&consolidateResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &consolidateResp, nil
 }
 
 // GetMemoryStats retrieves memory statistics via HTTP API

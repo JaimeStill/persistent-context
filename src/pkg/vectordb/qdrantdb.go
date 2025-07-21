@@ -4,26 +4,26 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strconv"
-	"strings"
 	"time"
 
-	"github.com/qdrant/go-client/qdrant"
 	"github.com/JaimeStill/persistent-context/pkg/config"
 	"github.com/JaimeStill/persistent-context/pkg/models"
+	"github.com/qdrant/go-client/qdrant"
 )
 
 // QdrantDB implements vector database operations using Qdrant
 type QdrantDB struct {
-	client      *qdrant.Client
-	config      *config.VectorDBConfig
-	collections map[models.MemoryType]string
+	client           *qdrant.Client
+	config           *config.VectorDBConfig
+	memoryCollections map[models.MemoryType]string
+	memories         *qdrantMemoryCollection
+	associations     *qdrantAssociationCollection
 }
 
 // NewQdrantDB creates a new Qdrant database implementation
 func NewQdrantDB(config *config.VectorDBConfig) (*QdrantDB, error) {
 	host, port := parseGRPCAddress(config.URL)
-	
+
 	client, err := qdrant.NewClient(&qdrant.Config{
 		Host:   host,
 		Port:   port,
@@ -34,39 +34,58 @@ func NewQdrantDB(config *config.VectorDBConfig) (*QdrantDB, error) {
 	}
 
 	qc := &QdrantDB{
-		client:      client,
-		config:      config,
-		collections: make(map[models.MemoryType]string),
+		client:           client,
+		config:           config,
+		memoryCollections: make(map[models.MemoryType]string),
 	}
 
 	// Map memory types to collection names
-	for memType, collectionName := range config.CollectionNames {
-		qc.collections[models.MemoryType(memType)] = collectionName
+	for memType, collectionName := range config.MemoryCollections {
+		qc.memoryCollections[models.MemoryType(memType)] = collectionName
 	}
+
+	// Initialize collections
+	qc.memories = newQdrantMemoryCollection(client, config)
+	qc.associations = newQdrantAssociationCollection(client, config.AssociationsCollection)
 
 	return qc, nil
 }
 
 // Initialize sets up collections and ensures they exist
 func (qc *QdrantDB) Initialize(ctx context.Context) error {
-	for memType, collectionName := range qc.collections {
-		exists, err := qc.collectionExists(ctx, collectionName)
+	for memType, collectionName := range qc.memoryCollections {
+		exists, err := collectionExists(ctx, qc.client, collectionName)
 		if err != nil {
 			return fmt.Errorf("failed to check collection %s: %w", collectionName, err)
 		}
 
 		if !exists {
-			if err := qc.createCollection(ctx, collectionName); err != nil {
+			if err := createCollection(ctx, qc.client, collectionName, qc.config.VectorDimension, qc.config.OnDiskPayload); err != nil {
 				return fmt.Errorf("failed to create collection %s: %w", collectionName, err)
 			}
 			slog.Info("Created collection", "collection", collectionName, "type", memType)
-			
+
 			// Create payload index for created_at field to support GetRecent() ordering
-			if err := qc.createPayloadIndex(ctx, collectionName); err != nil {
+			if err := createPayloadIndex(ctx, qc.client, collectionName); err != nil {
 				return fmt.Errorf("failed to create payload index for collection %s: %w", collectionName, err)
 			}
 			slog.Info("Created payload index for created_at", "collection", collectionName)
 		}
+	}
+
+	// Initialize association collection
+	associationCollectionName := qc.config.AssociationsCollection
+	exists, err := collectionExists(ctx, qc.client, associationCollectionName)
+	if err != nil {
+		return fmt.Errorf("failed to check association collection %s: %w", associationCollectionName, err)
+	}
+
+	if !exists {
+		// Create association collection with minimal vector dimension (associations don't need semantic search)
+		if err := createCollection(ctx, qc.client, associationCollectionName, 1, qc.config.OnDiskPayload); err != nil {
+			return fmt.Errorf("failed to create association collection %s: %w", associationCollectionName, err)
+		}
+		slog.Info("Created association collection", "collection", associationCollectionName)
 	}
 
 	return nil
@@ -74,7 +93,7 @@ func (qc *QdrantDB) Initialize(ctx context.Context) error {
 
 // Store stores a memory entry in the appropriate collection
 func (qc *QdrantDB) Store(ctx context.Context, entry *models.MemoryEntry) error {
-	collectionName, exists := qc.collections[entry.Type]
+	collectionName, exists := qc.memoryCollections[entry.Type]
 	if !exists {
 		return fmt.Errorf("no collection configured for memory type: %s", entry.Type)
 	}
@@ -121,7 +140,7 @@ func (qc *QdrantDB) Store(ctx context.Context, entry *models.MemoryEntry) error 
 
 // Query performs a vector similarity search
 func (qc *QdrantDB) Query(ctx context.Context, memType models.MemoryType, vector []float32, limit uint64) ([]*models.MemoryEntry, error) {
-	collectionName, exists := qc.collections[memType]
+	collectionName, exists := qc.memoryCollections[memType]
 	if !exists {
 		return nil, fmt.Errorf("no collection configured for memory type: %s", memType)
 	}
@@ -138,7 +157,7 @@ func (qc *QdrantDB) Query(ctx context.Context, memType models.MemoryType, vector
 
 	entries := make([]*models.MemoryEntry, 0, len(response))
 	for _, scoredPoint := range response {
-		entry, err := qc.scoredPointToMemoryEntry(scoredPoint)
+		entry, err := scoredPointToMemoryEntry(scoredPoint)
 		if err != nil {
 			slog.Warn("Failed to convert scored point to memory entry", "error", err)
 			continue
@@ -151,7 +170,7 @@ func (qc *QdrantDB) Query(ctx context.Context, memType models.MemoryType, vector
 
 // Retrieve gets a specific memory entry by ID
 func (qc *QdrantDB) Retrieve(ctx context.Context, memType models.MemoryType, id string) (*models.MemoryEntry, error) {
-	collectionName, exists := qc.collections[memType]
+	collectionName, exists := qc.memoryCollections[memType]
 	if !exists {
 		return nil, fmt.Errorf("no collection configured for memory type: %s", memType)
 	}
@@ -170,12 +189,12 @@ func (qc *QdrantDB) Retrieve(ctx context.Context, memType models.MemoryType, id 
 		return nil, fmt.Errorf("memory entry not found: %s", id)
 	}
 
-	return qc.retrievedPointToMemoryEntry(response[0])
+	return retrievedPointToMemoryEntry(response[0])
 }
 
 // GetRecent retrieves recent memories by creation time without similarity search
 func (qc *QdrantDB) GetRecent(ctx context.Context, memType models.MemoryType, limit uint32) ([]*models.MemoryEntry, error) {
-	collectionName, exists := qc.collections[memType]
+	collectionName, exists := qc.memoryCollections[memType]
 	if !exists {
 		return nil, fmt.Errorf("no collection configured for memory type: %s", memType)
 	}
@@ -197,7 +216,7 @@ func (qc *QdrantDB) GetRecent(ctx context.Context, memType models.MemoryType, li
 
 	entries := make([]*models.MemoryEntry, 0, len(response))
 	for _, point := range response {
-		entry, err := qc.retrievedPointToMemoryEntry(point)
+		entry, err := retrievedPointToMemoryEntry(point)
 		if err != nil {
 			slog.Warn("Failed to convert retrieved point to memory entry", "error", err)
 			continue
@@ -210,7 +229,7 @@ func (qc *QdrantDB) GetRecent(ctx context.Context, memType models.MemoryType, li
 
 // Count returns the number of memories of a specific type
 func (qc *QdrantDB) Count(ctx context.Context, memType models.MemoryType) (uint64, error) {
-	collectionName, exists := qc.collections[memType]
+	collectionName, exists := qc.memoryCollections[memType]
 	if !exists {
 		return 0, fmt.Errorf("no collection configured for memory type: %s", memType)
 	}
@@ -228,7 +247,7 @@ func (qc *QdrantDB) Count(ctx context.Context, memType models.MemoryType) (uint6
 
 // Delete removes memories by their IDs
 func (qc *QdrantDB) Delete(ctx context.Context, memType models.MemoryType, ids []string) error {
-	collectionName, exists := qc.collections[memType]
+	collectionName, exists := qc.memoryCollections[memType]
 	if !exists {
 		return fmt.Errorf("no collection configured for memory type: %s", memType)
 	}
@@ -262,7 +281,7 @@ func (qc *QdrantDB) Delete(ctx context.Context, memType models.MemoryType, ids [
 
 // GetAll retrieves all memories with cursor-based pagination
 func (qc *QdrantDB) GetAll(ctx context.Context, memType models.MemoryType, cursor string, limit uint32) (entries []*models.MemoryEntry, nextCursor string, err error) {
-	collectionName, exists := qc.collections[memType]
+	collectionName, exists := qc.memoryCollections[memType]
 	if !exists {
 		return nil, "", fmt.Errorf("no collection configured for memory type: %s", memType)
 	}
@@ -295,7 +314,7 @@ func (qc *QdrantDB) GetAll(ctx context.Context, memType models.MemoryType, curso
 	// Convert points to memory entries
 	entries = make([]*models.MemoryEntry, 0, len(response))
 	for _, point := range response {
-		entry, err := qc.retrievedPointToMemoryEntry(point)
+		entry, err := retrievedPointToMemoryEntry(point)
 		if err != nil {
 			slog.Warn("Failed to convert retrieved point to memory entry", "error", err)
 			continue
@@ -321,184 +340,12 @@ func (qc *QdrantDB) HealthCheck(ctx context.Context) error {
 	return err
 }
 
-// collectionExists checks if a collection exists
-func (qc *QdrantDB) collectionExists(ctx context.Context, name string) (bool, error) {
-	response, err := qc.client.ListCollections(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	for _, collection := range response {
-		if collection == name {
-			return true, nil
-		}
-	}
-	return false, nil
+// Memories returns the memory collection interface
+func (qc *QdrantDB) Memories() MemoryCollection {
+	return qc.memories
 }
 
-// createCollection creates a new collection
-func (qc *QdrantDB) createCollection(ctx context.Context, name string) error {
-	err := qc.client.CreateCollection(ctx, &qdrant.CreateCollection{
-		CollectionName: name,
-		VectorsConfig: &qdrant.VectorsConfig{
-			Config: &qdrant.VectorsConfig_Params{
-				Params: &qdrant.VectorParams{
-					Size:     uint64(qc.config.VectorDimension),
-					Distance: qdrant.Distance_Cosine,
-					OnDisk:   &qc.config.OnDiskPayload,
-				},
-			},
-		},
-	})
-	return err
-}
-
-// createPayloadIndex creates a payload index for the created_at field
-func (qc *QdrantDB) createPayloadIndex(ctx context.Context, collectionName string) error {
-	fieldType := qdrant.FieldType_FieldTypeInteger
-	rangeEnabled := true
-	
-	_, err := qc.client.CreateFieldIndex(ctx, &qdrant.CreateFieldIndexCollection{
-		CollectionName: collectionName,
-		FieldName:      "created_at",
-		FieldType:      &fieldType, // Unix timestamp
-		FieldIndexParams: &qdrant.PayloadIndexParams{
-			IndexParams: &qdrant.PayloadIndexParams_IntegerIndexParams{
-				IntegerIndexParams: &qdrant.IntegerIndexParams{
-					Range: &rangeEnabled, // Enable range queries for ordering
-				},
-			},
-		},
-	})
-	return err
-}
-
-// retrievedPointToMemoryEntry converts a Qdrant RetrievedPoint to a memory entry
-func (qc *QdrantDB) retrievedPointToMemoryEntry(point *qdrant.RetrievedPoint) (*models.MemoryEntry, error) {
-	entry := &models.MemoryEntry{
-		ID:       point.Id.GetUuid(),
-		Metadata: make(map[string]any),
-	}
-
-	// Extract vector
-	if vectors := point.Vectors; vectors != nil {
-		if vector := vectors.GetVector(); vector != nil {
-			entry.Embedding = vector.Data
-		}
-	}
-
-	// Extract payload
-	if payload := point.Payload; payload != nil {
-		if content := payload["content"]; content != nil {
-			entry.Content = content.GetStringValue()
-		}
-		if memType := payload["type"]; memType != nil {
-			entry.Type = models.MemoryType(memType.GetStringValue())
-		}
-		if createdAt := payload["created_at"]; createdAt != nil {
-			if timestamp := createdAt.GetIntegerValue(); timestamp != 0 {
-				entry.CreatedAt = time.Unix(timestamp, 0)
-			}
-		}
-		if accessedAt := payload["accessed_at"]; accessedAt != nil {
-			if t, err := time.Parse(time.RFC3339, accessedAt.GetStringValue()); err == nil {
-				entry.AccessedAt = t
-			}
-		}
-		if strength := payload["strength"]; strength != nil {
-			entry.Strength = float32(strength.GetDoubleValue())
-		}
-
-		// Extract metadata
-		for key, value := range payload {
-			if key == "content" || key == "type" || key == "created_at" || key == "accessed_at" || key == "strength" {
-				continue
-			}
-			switch v := value.Kind.(type) {
-			case *qdrant.Value_StringValue:
-				entry.Metadata[key] = v.StringValue
-			case *qdrant.Value_IntegerValue:
-				entry.Metadata[key] = v.IntegerValue
-			case *qdrant.Value_DoubleValue:
-				entry.Metadata[key] = v.DoubleValue
-			case *qdrant.Value_BoolValue:
-				entry.Metadata[key] = v.BoolValue
-			}
-		}
-	}
-
-	return entry, nil
-}
-
-// scoredPointToMemoryEntry converts a Qdrant ScoredPoint to a memory entry
-func (qc *QdrantDB) scoredPointToMemoryEntry(scoredPoint *qdrant.ScoredPoint) (*models.MemoryEntry, error) {
-	entry := &models.MemoryEntry{
-		ID:       scoredPoint.Id.GetUuid(),
-		Metadata: make(map[string]any),
-	}
-
-	// Extract vector
-	if vectors := scoredPoint.Vectors; vectors != nil {
-		if vector := vectors.GetVector(); vector != nil {
-			entry.Embedding = vector.Data
-		}
-	}
-
-	// Extract payload
-	if payload := scoredPoint.Payload; payload != nil {
-		if content := payload["content"]; content != nil {
-			entry.Content = content.GetStringValue()
-		}
-		if memType := payload["type"]; memType != nil {
-			entry.Type = models.MemoryType(memType.GetStringValue())
-		}
-		if createdAt := payload["created_at"]; createdAt != nil {
-			if timestamp := createdAt.GetIntegerValue(); timestamp != 0 {
-				entry.CreatedAt = time.Unix(timestamp, 0)
-			}
-		}
-		if accessedAt := payload["accessed_at"]; accessedAt != nil {
-			if t, err := time.Parse(time.RFC3339, accessedAt.GetStringValue()); err == nil {
-				entry.AccessedAt = t
-			}
-		}
-		if strength := payload["strength"]; strength != nil {
-			entry.Strength = float32(strength.GetDoubleValue())
-		}
-
-		// Extract metadata
-		for key, value := range payload {
-			if key == "content" || key == "type" || key == "created_at" || key == "accessed_at" || key == "strength" {
-				continue
-			}
-			switch v := value.Kind.(type) {
-			case *qdrant.Value_StringValue:
-				entry.Metadata[key] = v.StringValue
-			case *qdrant.Value_IntegerValue:
-				entry.Metadata[key] = v.IntegerValue
-			case *qdrant.Value_DoubleValue:
-				entry.Metadata[key] = v.DoubleValue
-			case *qdrant.Value_BoolValue:
-				entry.Metadata[key] = v.BoolValue
-			}
-		}
-	}
-
-	return entry, nil
-}
-
-// Helper functions to extract host and port from URL
-// parseGRPCAddress parses a gRPC address in host:port format
-// Supports both "host:port" and "host" (defaults to port 6334)
-func parseGRPCAddress(address string) (host string, port int) {
-	if idx := strings.LastIndex(address, ":"); idx != -1 {
-		host = address[:idx]
-		if portStr := address[idx+1:]; portStr != "" {
-			if p, err := strconv.Atoi(portStr); err == nil {
-				return host, p
-			}
-		}
-	}
-	// No port specified, use host as-is and default gRPC port
-	return address, 6334
+// Associations returns the association collection interface
+func (qc *QdrantDB) Associations() AssociationCollection {
+	return qc.associations
 }

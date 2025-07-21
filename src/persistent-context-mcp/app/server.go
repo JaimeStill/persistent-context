@@ -88,14 +88,9 @@ func (s *Server) registerGetStatsTool() {
 			Stats:   stats,
 		}
 
-		totalMemories := 0
-		if total, ok := stats["total_memories"].(float64); ok {
-			totalMemories = int(total)
-		}
-
 		return &mcp.CallToolResultFor[GetStatsResult]{
 			Content: []mcp.Content{&mcp.TextContent{
-				Text: fmt.Sprintf("Memory stats: %d total memories", totalMemories),
+				Text: "Memory statistics retrieved successfully",
 			}},
 			StructuredContent: result,
 		}, nil
@@ -107,40 +102,41 @@ func (s *Server) registerGetStatsTool() {
 
 // TriggerConsolidationResult represents the consolidation result
 type TriggerConsolidationResult struct {
-	Success           bool `json:"success"`
-	Message           string `json:"message"`
-	MemoriesProcessed int  `json:"memories_processed"`
+	Success            bool `json:"success"`
+	Message            string `json:"message"`
+	GroupsFormed       int  `json:"groups_formed"`
+	GroupsConsolidated int  `json:"groups_consolidated"`
+	MemoriesProcessed  int  `json:"memories_processed"`
+	TotalMemories      int  `json:"total_memories"`
 }
 
 // registerTriggerConsolidationTool adds the consolidation trigger tool
 func (s *Server) registerTriggerConsolidationTool() {
 	tool := &mcp.Tool{
 		Name:        "trigger_consolidation",
-		Description: "Manually trigger memory consolidation process",
+		Description: "Trigger autonomous memory consolidation process",
 	}
 
 	handler := func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[struct{}]) (*mcp.CallToolResultFor[TriggerConsolidationResult], error) {
-		// Get recent memories for consolidation
-		memories, err := s.httpClient.GetMemories(ctx, 100)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get memories for consolidation: %w", err)
-		}
-
-		// Trigger consolidation through HTTP client
-		err = s.httpClient.ConsolidateMemories(ctx, memories)
+		// Trigger autonomous consolidation via web service
+		consolidateResp, err := s.httpClient.TriggerConsolidation(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to trigger consolidation: %w", err)
 		}
 
 		result := TriggerConsolidationResult{
-			Success:           true,
-			Message:           "Consolidation triggered successfully",
-			MemoriesProcessed: len(memories),
+			Success:            true,
+			Message:            consolidateResp.Message,
+			GroupsFormed:       consolidateResp.GroupsFormed,
+			GroupsConsolidated: consolidateResp.GroupsConsolidated,
+			MemoriesProcessed:  consolidateResp.MemoriesProcessed,
+			TotalMemories:      consolidateResp.TotalMemories,
 		}
 
 		return &mcp.CallToolResultFor[TriggerConsolidationResult]{
 			Content: []mcp.Content{&mcp.TextContent{
-				Text: fmt.Sprintf("Successfully triggered consolidation for %d memories", len(memories)),
+				Text: fmt.Sprintf("Consolidation completed: %d groups formed, %d groups consolidated, %d memories processed", 
+					consolidateResp.GroupsFormed, consolidateResp.GroupsConsolidated, consolidateResp.MemoriesProcessed),
 			}},
 			StructuredContent: result,
 		}, nil
@@ -218,7 +214,8 @@ func (s *Server) registerGetMemoriesTool() {
 	handler := func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[GetMemoriesParams]) (*mcp.CallToolResultFor[GetMemoriesResult], error) {
 		args := params.Arguments
 
-		limit := uint32(100) // default
+		// Determine limit (let web service handle default if not specified)
+		limit := uint32(0) // 0 signals web service to use default
 		if args.Limit != nil {
 			limit = *args.Limit
 		}
@@ -271,12 +268,14 @@ func (s *Server) registerSearchMemoriesTool() {
 	handler := func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[SearchMemoriesParams]) (*mcp.CallToolResultFor[SearchMemoriesResult], error) {
 		args := params.Arguments
 
-		memoryType := models.TypeEpisodic // default
+		// Determine memory type (let web service handle default if not specified)
+		memoryType := models.TypeEpisodic // This is the system default
 		if args.MemoryType != nil {
 			memoryType = models.MemoryType(*args.MemoryType)
 		}
 
-		limit := uint64(10) // default
+		// Determine limit (let web service handle default if not specified)  
+		limit := uint64(0) // 0 signals web service to use default
 		if args.Limit != nil {
 			limit = *args.Limit
 		}

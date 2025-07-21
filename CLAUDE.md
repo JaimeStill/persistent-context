@@ -47,6 +47,21 @@
 - Update this file with new directives as they are established
 - **Pre-Alpha Software**: This is pre-alpha software that hasn't been successfully executed yet. Don't leave deprecated code or try to worry about backwards compatibility. If something is determined to be obsolete, take the time to clean it out
 
+### Development Workflow: Pause-and-Check Pattern
+
+When executing tasks in normal mode:
+
+- **After Each Edit**: Upon completing any file modification, pause and explicitly invite feedback before proceeding
+- **Knowledge Check Format**: "I've [brief description of change]. Would you like to discuss this change, ask any questions, or shall I continue with the next task?"
+- **Response Handling**:
+  - If questions arise, address them fully before continuing
+  - If user requests plan mode, immediately switch contexts
+  - If user says to continue, proceed to next task
+- **Maintain Context**: Keep the current task list visible but don't assume automatic progression
+- **Pair Programming Mindset**: Act as a collaborative partner, not an autonomous executor
+
+This pattern ensures natural knowledge transfer points and prevents cognitive velocity from exceeding comprehension.
+
 ### Testing and Validation
 
 - **Validate Before Moving Forward**: Always test and validate each focus area before moving to the next separate focus area

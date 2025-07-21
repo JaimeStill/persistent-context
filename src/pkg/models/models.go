@@ -179,13 +179,12 @@ type GetMemoriesResponse struct {
 	Limit    uint32         `json:"limit"`
 }
 
-type ConsolidateRequest struct {
-	MemoryIDs []string `json:"memory_ids"`
-}
-
 type ConsolidateResponse struct {
-	Message        string `json:"message"`
-	ProcessedCount int    `json:"processed_count"`
+	Message            string `json:"message"`
+	GroupsFormed       int    `json:"groups_formed"`
+	GroupsConsolidated int    `json:"groups_consolidated"`
+	MemoriesProcessed  int    `json:"memories_processed"`
+	TotalMemories      int    `json:"total_memories"`
 }
 
 type StatsResponse struct {

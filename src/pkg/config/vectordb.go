@@ -9,13 +9,14 @@ import (
 
 // VectorDBConfig holds vector database configuration
 type VectorDBConfig struct {
-	Provider        string            `mapstructure:"provider"`         // "qdrant", "weaviate", etc.
-	URL             string            `mapstructure:"url"`              // Database URL
-	CollectionNames map[string]string `mapstructure:"collection_names"` // Memory type -> collection name
-	VectorDimension int               `mapstructure:"vector_dimension"` // Vector embedding dimension
-	OnDiskPayload   bool              `mapstructure:"on_disk_payload"`  // Use disk storage for payloads
-	Timeout         time.Duration     `mapstructure:"timeout"`          // Connection timeout
-	Insecure        bool              `mapstructure:"insecure"`         // Disable TLS for development
+	Provider               string            `mapstructure:"provider"`               // "qdrant", "weaviate", etc.
+	URL                    string            `mapstructure:"url"`                    // Database URL
+	MemoryCollections      map[string]string `mapstructure:"memory_collections"`      // Memory type -> collection name
+	AssociationsCollection string            `mapstructure:"associations_collection"` // Association collection name
+	VectorDimension        int               `mapstructure:"vector_dimension"`       // Vector embedding dimension
+	OnDiskPayload          bool              `mapstructure:"on_disk_payload"`        // Use disk storage for payloads
+	Timeout                time.Duration     `mapstructure:"timeout"`                // Connection timeout
+	Insecure               bool              `mapstructure:"insecure"`               // Disable TLS for development
 }
 
 // LoadConfig loads configuration from viper
@@ -41,9 +42,9 @@ func (c *VectorDBConfig) ValidateConfig() error {
 		return fmt.Errorf("timeout must be positive")
 	}
 
-	// Validate collection names
-	if len(c.CollectionNames) == 0 {
-		return fmt.Errorf("collection names cannot be empty")
+	// Validate memory collections
+	if len(c.MemoryCollections) == 0 {
+		return fmt.Errorf("memory collections cannot be empty")
 	}
 
 	return nil
@@ -58,11 +59,12 @@ func (c *VectorDBConfig) GetDefaults() map[string]any {
 		"vectordb.vector_dimension": 3072,
 		"vectordb.on_disk_payload":  true,
 		"vectordb.timeout":          "30s",
-		"vectordb.collection_names": map[string]string{
+		"vectordb.memory_collections": map[string]string{
 			"episodic":      "episodic_memories",
 			"semantic":      "semantic_memories",
 			"procedural":    "procedural_memories",
 			"metacognitive": "metacognitive_memories",
 		},
+		"vectordb.associations_collection": "associations",
 	}
 }

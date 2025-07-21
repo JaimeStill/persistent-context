@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -64,7 +65,7 @@ func (s *Server) registerRoutes() {
 		api.POST("/journal", s.handleCaptureMemory)
 		api.GET("/journal", s.handleGetMemories)
 		api.POST("/journal/search", s.handleSearchMemories)
-		api.POST("/journal/consolidate", s.handleConsolidateMemories)
+		api.POST("/journal/consolidate", s.handleConsolidation)
 		api.GET("/journal/stats", s.handleGetMemoryStats)
 	}
 }
@@ -193,8 +194,14 @@ func (s *Server) handleGetMemories(c *gin.Context) {
 		return
 	}
 
+	// Apply default limit if not specified
+	limit := req.Limit
+	if limit == 0 {
+		limit = 100 // Default limit
+	}
+
 	ctx := c.Request.Context()
-	memories, err := s.deps.Journal.GetMemories(ctx, req.Limit)
+	memories, err := s.deps.Journal.GetMemories(ctx, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "retrieval_failed",
@@ -222,19 +229,20 @@ func (s *Server) handleSearchMemories(c *gin.Context) {
 		return
 	}
 
-	// Default to episodic memory type if not specified
+	// Apply default memory type if not specified
 	memType := models.TypeEpisodic
 	if req.MemoryType != "" {
 		memType = models.MemoryType(req.MemoryType)
 	}
 
-	// Default limit if not specified
-	if req.Limit == 0 {
-		req.Limit = 10
+	// Apply default limit if not specified
+	limit := req.Limit
+	if limit == 0 {
+		limit = 10 // Default limit
 	}
 
 	ctx := c.Request.Context()
-	memories, err := s.deps.Journal.QuerySimilarMemories(ctx, req.Content, memType, req.Limit)
+	memories, err := s.deps.Journal.QuerySimilarMemories(ctx, req.Content, memType, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "search_failed",
@@ -247,50 +255,49 @@ func (s *Server) handleSearchMemories(c *gin.Context) {
 		Memories: memories,
 		Query:    req.Content,
 		Count:    len(memories),
-		Limit:    req.Limit,
+		Limit:    limit,
 	})
 }
 
-// handleConsolidateMemories handles POST /api/v1/journal/consolidate
-func (s *Server) handleConsolidateMemories(c *gin.Context) {
-	var req models.ConsolidateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{
-			Error:   "invalid_request",
-			Message: err.Error(),
-		})
-		return
-	}
-
+// handleConsolidation handles POST /api/v1/journal/consolidate
+func (s *Server) handleConsolidation(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	// Retrieve memories by IDs
-	var memories []*models.MemoryEntry
-	for _, id := range req.MemoryIDs {
-		memory, err := s.deps.Journal.GetMemoryByID(ctx, id)
-		if err != nil {
-			c.JSON(http.StatusNotFound, models.ErrorResponse{
-				Error:   "memory_not_found",
-				Message: fmt.Sprintf("Memory with ID %s not found: %v", id, err),
-			})
-			return
-		}
-		memories = append(memories, memory)
-	}
-
-	// Consolidate memories
-	err := s.deps.Journal.ConsolidateMemories(ctx, memories)
+	// Get recent episodic memories for intelligent consolidation
+	memories, err := s.deps.Journal.GetMemories(ctx, 100)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
-			Error:   "consolidation_failed",
-			Message: err.Error(),
+			Error:   "retrieval_failed",
+			Message: fmt.Sprintf("Failed to get memories for consolidation: %v", err),
 		})
 		return
+	}
+
+	// Group memories by associations for intelligent consolidation
+	groupedMemories := s.groupMemoriesByAssociations(memories)
+	
+	totalProcessed := 0
+	groupsConsolidated := 0
+	
+	for _, group := range groupedMemories {
+		// Only consolidate groups with multiple memories
+		if len(group) > 1 {
+			err = s.deps.Journal.ConsolidateMemories(ctx, group)
+			if err != nil {
+				slog.Warn("Failed to consolidate memory group", "error", err, "group_size", len(group))
+				continue
+			}
+			totalProcessed += len(group)
+			groupsConsolidated++
+		}
 	}
 
 	c.JSON(http.StatusOK, models.ConsolidateResponse{
-		Message:        "Memories consolidated successfully",
-		ProcessedCount: len(memories),
+		Message:            "Intelligent consolidation completed",
+		GroupsFormed:       len(groupedMemories),
+		GroupsConsolidated: groupsConsolidated,
+		MemoriesProcessed:  totalProcessed,
+		TotalMemories:      len(memories),
 	})
 }
 
@@ -309,6 +316,65 @@ func (s *Server) handleGetMemoryStats(c *gin.Context) {
 	c.JSON(http.StatusOK, models.StatsResponse{
 		Stats: stats,
 	})
+}
+
+// groupMemoriesByAssociations groups memories that share associations for targeted consolidation
+func (s *Server) groupMemoriesByAssociations(memories []*models.MemoryEntry) [][]*models.MemoryEntry {
+	// Track which memories have been grouped
+	grouped := make(map[string]bool)
+	var groups [][]*models.MemoryEntry
+	
+	for _, memory := range memories {
+		if grouped[memory.ID] {
+			continue // Skip already grouped memories
+		}
+		
+		// Start a new group with this memory
+		group := []*models.MemoryEntry{memory}
+		grouped[memory.ID] = true
+		
+		// Find related memories through associations
+		for _, candidate := range memories {
+			if grouped[candidate.ID] {
+				continue
+			}
+			
+			// Check if memories share associations (bidirectional)
+			if s.memoriesShareAssociations(memory, candidate) {
+				group = append(group, candidate)
+				grouped[candidate.ID] = true
+			}
+		}
+		
+		groups = append(groups, group)
+	}
+	
+	return groups
+}
+
+// memoriesShareAssociations checks if two memories have overlapping associations
+func (s *Server) memoriesShareAssociations(memory1, memory2 *models.MemoryEntry) bool {
+	// Check direct association IDs
+	for _, id1 := range memory1.AssociationIDs {
+		for _, id2 := range memory2.AssociationIDs {
+			if id1 == id2 {
+				return true
+			}
+		}
+		// Also check if memory2 is directly associated with memory1
+		if id1 == memory2.ID {
+			return true
+		}
+	}
+	
+	// Check if memory1 is directly associated with memory2
+	for _, id := range memory2.AssociationIDs {
+		if id == memory1.ID {
+			return true
+		}
+	}
+	
+	return false
 }
 
 

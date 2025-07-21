@@ -2,16 +2,19 @@ package journal
 
 import (
 	"context"
+	"log/slog"
 	"math"
 	"time"
 
 	"github.com/JaimeStill/persistent-context/pkg/models"
+	"github.com/JaimeStill/persistent-context/pkg/vectordb"
 	"github.com/google/uuid"
 )
 
 // AssociationTracker manages relationships between memories
 type AssociationTracker struct {
-	// In-memory association storage (could be moved to persistent storage later)
+	vectorDB *vectordb.VectorDB
+	// In-memory association storage for fast access
 	associations map[string]*models.MemoryAssociation
 	// Index for quick lookups by source memory
 	sourceIndex map[string][]*models.MemoryAssociation
@@ -20,8 +23,9 @@ type AssociationTracker struct {
 }
 
 // NewAssociationTracker creates a new association tracker
-func NewAssociationTracker() *AssociationTracker {
+func NewAssociationTracker(vectorDB vectordb.VectorDB) *AssociationTracker {
 	return &AssociationTracker{
+		vectorDB:     &vectorDB,
 		associations: make(map[string]*models.MemoryAssociation),
 		sourceIndex:  make(map[string][]*models.MemoryAssociation),
 		targetIndex:  make(map[string][]*models.MemoryAssociation),
@@ -41,12 +45,19 @@ func (at *AssociationTracker) CreateAssociation(sourceID, targetID string, assoc
 		Metadata:  metadata,
 	}
 
-	// Store association
+	// Store association in memory for fast access
 	at.associations[association.ID] = association
 
 	// Update indexes
 	at.sourceIndex[sourceID] = append(at.sourceIndex[sourceID], association)
 	at.targetIndex[targetID] = append(at.targetIndex[targetID], association)
+
+	// Persist to database
+	ctx := context.Background()
+	if err := (*at.vectorDB).Associations().Store(ctx, association); err != nil {
+		slog.Error("Failed to persist association to database", "error", err, "association_id", association.ID)
+		// Continue with in-memory storage even if persistence fails
+	}
 
 	return association
 }

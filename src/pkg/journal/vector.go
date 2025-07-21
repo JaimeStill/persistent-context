@@ -27,7 +27,7 @@ type VectorJournal struct {
 
 // NewVectorJournal creates a new vector-based journal implementation
 func NewVectorJournal(deps *Dependencies) *VectorJournal {
-	associations := NewAssociationTracker()
+	associations := NewAssociationTracker(deps.VectorDB)
 	
 	return &VectorJournal{
 		vectorDB:       deps.VectorDB,
@@ -76,7 +76,7 @@ func (vj *VectorJournal) CaptureContext(ctx context.Context, source string, cont
 	entry.Score = vj.scorer.ScoreMemory(entry)
 	
 	// Store in vector database
-	if err := vj.vectorDB.Store(ctx, entry); err != nil {
+	if err := vj.vectorDB.Memories().Store(ctx, entry); err != nil {
 		slog.Error("Failed to store memory in vector database", "error", err, "id", entry.ID)
 		return nil, fmt.Errorf("failed to store memory: %w", err)
 	}
@@ -87,8 +87,8 @@ func (vj *VectorJournal) CaptureContext(ctx context.Context, source string, cont
 		"content_length", len(content),
 		"embedding_dim", len(embedding))
 	
-	// Analyze associations with recent memories
-	go vj.analyzeNewMemoryAssociations(ctx, entry)
+	// Analyze associations with recent memories (use background context for async operation)
+	go vj.analyzeNewMemoryAssociations(context.Background(), entry)
 	
 	return entry, nil
 }
@@ -100,7 +100,7 @@ func (vj *VectorJournal) GetMemories(ctx context.Context, limit uint32) ([]*mode
 	}
 
 	// Get recent memories without similarity search
-	memories, err := vj.vectorDB.GetRecent(ctx, models.TypeEpisodic, limit)
+	memories, err := vj.vectorDB.Memories().GetRecent(ctx, models.TypeEpisodic, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get recent memories: %w", err)
 	}
@@ -110,7 +110,7 @@ func (vj *VectorJournal) GetMemories(ctx context.Context, limit uint32) ([]*mode
 
 // GetMemoryByID retrieves a specific memory by ID
 func (vj *VectorJournal) GetMemoryByID(ctx context.Context, id string) (*models.MemoryEntry, error) {
-	entry, err := vj.vectorDB.Retrieve(ctx, models.TypeEpisodic, id)
+	entry, err := vj.vectorDB.Memories().Retrieve(ctx, models.TypeEpisodic, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve memory %s: %w", id, err)
 	}
@@ -119,7 +119,7 @@ func (vj *VectorJournal) GetMemoryByID(ctx context.Context, id string) (*models.
 	vj.scorer.UpdateMemoryAccess(entry)
 	
 	// Store updated memory with new score back to database
-	if err := vj.vectorDB.Store(ctx, entry); err != nil {
+	if err := vj.vectorDB.Memories().Store(ctx, entry); err != nil {
 		slog.Warn("Failed to update memory access tracking", "error", err, "id", entry.ID)
 	}
 	
@@ -139,7 +139,7 @@ func (vj *VectorJournal) QuerySimilarMemories(ctx context.Context, content strin
 	}
 
 	// Query vector database
-	memories, err := vj.vectorDB.Query(ctx, memType, embedding, limit)
+	memories, err := vj.vectorDB.Memories().Query(ctx, memType, embedding, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query similar memories: %w", err)
 	}
@@ -189,7 +189,7 @@ func (vj *VectorJournal) ConsolidateMemories(ctx context.Context, memories []*mo
 	}
 
 	// Store semantic memory
-	if err := vj.vectorDB.Store(ctx, semanticEntry); err != nil {
+	if err := vj.vectorDB.Memories().Store(ctx, semanticEntry); err != nil {
 		return fmt.Errorf("failed to store semantic memory: %w", err)
 	}
 
@@ -204,22 +204,22 @@ func (vj *VectorJournal) ConsolidateMemories(ctx context.Context, memories []*mo
 // GetMemoryStats returns statistics about stored memories
 func (vj *VectorJournal) GetMemoryStats(ctx context.Context) (map[string]any, error) {
 	// Get actual counts from VectorDB
-	episodicCount, err := vj.vectorDB.Count(ctx, models.TypeEpisodic)
+	episodicCount, err := vj.vectorDB.Memories().Count(ctx, models.TypeEpisodic)
 	if err != nil {
 		return nil, fmt.Errorf("failed to count episodic memories: %w", err)
 	}
 
-	semanticCount, err := vj.vectorDB.Count(ctx, models.TypeSemantic)
+	semanticCount, err := vj.vectorDB.Memories().Count(ctx, models.TypeSemantic)
 	if err != nil {
 		return nil, fmt.Errorf("failed to count semantic memories: %w", err)
 	}
 
-	proceduralCount, err := vj.vectorDB.Count(ctx, models.TypeProcedural)
+	proceduralCount, err := vj.vectorDB.Memories().Count(ctx, models.TypeProcedural)
 	if err != nil {
 		return nil, fmt.Errorf("failed to count procedural memories: %w", err)
 	}
 
-	metacognitiveCount, err := vj.vectorDB.Count(ctx, models.TypeMetacognitive)
+	metacognitiveCount, err := vj.vectorDB.Memories().Count(ctx, models.TypeMetacognitive)
 	if err != nil {
 		return nil, fmt.Errorf("failed to count metacognitive memories: %w", err)
 	}
@@ -284,7 +284,7 @@ func (vj *VectorJournal) analyzeNewMemoryAssociations(ctx context.Context, newMe
 	if len(associationIDs) > 0 {
 		newMemory.AssociationIDs = associationIDs
 		// Store updated memory (fire and forget, don't block on errors)
-		if err := vj.vectorDB.Store(ctx, newMemory); err != nil {
+		if err := vj.vectorDB.Memories().Store(ctx, newMemory); err != nil {
 			slog.Warn("Failed to update memory with associations", "error", err, "id", newMemory.ID)
 		}
 	}
