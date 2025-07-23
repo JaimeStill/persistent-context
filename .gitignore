@@ -2,3 +2,4 @@ data/ollama
 data/personas
 data/qdrant
 bin
+src/experiments/test-data/*.json

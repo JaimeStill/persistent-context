@@ -511,6 +511,7 @@ Following comprehensive project review on July 14, 2025, the roadmap has been re
 **Objective**: Build CLI tool for diagnostics and identify consolidation performance root cause.
 
 **Major Accomplishments:**
+
 - ✅ **Interactive CLI Tool**: Full Cobra/Viper foundation with memory inspection, consolidation testing, and service monitoring
 - ✅ **Root Cause Identified**: Confirmed consolidation timeout issue - system attempting to process 7+ memories in single LLM request
 - ✅ **Container Log Analysis**: Found specific error: "context deadline exceeded" after 2+ minutes on oversized payloads
@@ -518,23 +519,57 @@ Following comprehensive project review on July 14, 2025, the roadmap has been re
 - ✅ **HTTP Client Integration**: All /api/v1/journal/* endpoints working correctly
 
 **Critical Issue Analysis:**
+
 ```
 Error: "failed to consolidate memories: failed after 4 attempts: Post \"http://ollama:11434/api/generate\": context deadline exceeded"
 Group size: 7 memories
 Duration: 2+ minutes before timeout
 ```
 
-### Session 16: Consolidation Performance Fix + Service Architecture (2-3 hours)
+### Session 16: Consolidation Performance Fix → Association-Based Memory Pivot (2-3 hours)
 
-**🚨 CRITICAL PRIORITY**: Implement batch size limits and progressive consolidation using CLI tool for testing.
+**🚨 PIVOT DECISION**: After performance analysis, abandon LLM-based consolidation entirely.
 
-**Consolidation Performance Issues to Address First**:
+**Key Discovery**: Local LLM processing is fundamentally unviable for real-time memory operations:
+- Simple prompts: 14+ seconds processing time
+- Complex consolidation: 60-120+ seconds (causes timeouts)  
+- Hardware requirements too demanding for target deployment
 
-1. **Implement Batch Size Limits**: Cap consolidation groups to 3-5 memories maximum
-2. **Progressive Consolidation**: Break large groups into smaller batches with iterative processing  
-3. **Timeout Configuration**: Add consolidation-specific timeout settings
-4. **Consolidation Strategy**: Consider consolidating pairs first, then consolidating consolidated memories
-5. **Resource Management**: Add memory and processing limits to prevent system overload
+**New Objective**: Implement pure association-based memory system without local LLM processing.
+
+**Revised Approach**:
+
+1. **✅ LLM Performance Baseline Analysis** 
+   - Confirmed 14+ second minimum processing time for simple prompts
+   - Documented exponential scaling with prompt size
+   - Concluded LLM consolidation unscalable for real Claude Code sessions
+
+2. **Association-Based Memory System**
+   - Leverage existing vector embeddings and association graphs
+   - Remove all LLM consolidation dependencies
+   - Focus on real-time memory capture with rich associations
+
+**Tasks**:
+
+1. **✅ Performance Investigation**
+   - [x] Create experiments directory structure  
+   - [x] Generate realistic test data
+   - [x] Test LLM baseline performance (manual verification)
+   - [x] Document findings and make pivot decision
+
+2. **Association System Implementation**
+   - [ ] Archive LLM consolidation results to _context/
+   - [ ] Clean up experiments directory for new approach
+   - [ ] Test pure association performance (< 200ms target)
+   - [ ] Validate session persistence across restarts
+   - [ ] Test scale with 1000+ memories
+
+3. **MVP Integration**
+   - [ ] Remove LLM consolidation from codebase
+   - [ ] Enhance association formation algorithms
+   - [ ] Final performance validation
+
+### Session 17: Service Architecture Refactoring (2-3 hours)
 
 **Objective**: Refactor monolithic service files into logical domain-based abstractions for improved maintainability and organization.
 
@@ -598,7 +633,7 @@ src/persistent-context-svc/app/
    - [ ] Standardize error and success response formats
    - [ ] Organize routes logically in server.go
 
-### Session 16: Core Loop Demonstration (2-3 hours)
+### Session 18: Core Loop Demonstration (2-3 hours)
 
 **Objective**: Demonstrate complete memory system functionality with session continuity.
 
@@ -620,7 +655,7 @@ src/persistent-context-svc/app/
    - [ ] Demonstrate semantic knowledge formation
    - [ ] Validate persona context preservation
 
-### Session 17: Interactive Go CLI Tool for Package Investigation (2-3 hours)
+### Session 19: Interactive Go CLI Tool for Package Investigation (2-3 hours)
 
 **Objective**: Create a standalone Go CLI tool that provides interactive investigation capabilities for the pkg infrastructure.
 
@@ -677,7 +712,7 @@ src/persistent-context-svc/app/
    - [ ] Configuration loading and hot-reload capabilities
    - [ ] Real-time monitoring of system changes
 
-### Session 18: MVP Polish & Launch Preparation (3-4 hours)
+### Session 20: MVP Polish & Launch Preparation (3-4 hours)
 
 **Objective**: Prepare polished MVP for strategic outreach and demonstration.
 
